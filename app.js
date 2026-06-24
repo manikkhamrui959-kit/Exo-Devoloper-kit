@@ -1106,8 +1106,12 @@ async function sendAI() {
     const currentCode = files[activeFile] || '';
     const systemPrompt = `You are the AI coding assistant inside Exomnia DevKit, a mobile-first developer environment. Help the user concisely and practically. Current file: ${activeFile}\n\nFile content (first 1000 chars):\n${currentCode.slice(0, 1000)}\n\nRespond in a mix of English and Bengali when appropriate. Keep answers focused and actionable. Use \`backticks\` for code.`;
 
-    // Build headers — if userApiKey set use it, else rely on Claude.ai injection
-    const hdrs = { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' };
+    // Build headers — requires dangerous-direct-browser-access for CORS
+    const hdrs = {
+      'Content-Type': 'application/json',
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    };
     if (userApiKey) hdrs['x-api-key'] = userApiKey;
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1212,7 +1216,7 @@ function saveApiKey() {
   keyBtn.style.color = 'var(--green)';
   keyBtn.style.borderColor = 'rgba(63,185,80,0.3)';
   closeKeyModal();
-  showNotif('✓ API Key সেট হয়েছে! AI ready.', 'success');
+  notify('✓ API Key সেট হয়েছে! AI ready.', 'success');
 }
 
 function copyAIMsg(btn) {
