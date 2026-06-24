@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Exomnia DevKit</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">EXOMNIA<span>DevKit</span></div>
+  <div class="header-nav">
+    <button class="nav-btn active" onclick="switchView('editor')" id="nav-editor"><span class="dot"></span>Editor</button>
+    <button class="nav-btn" onclick="switchView('files')" id="nav-files">📁 Files</button>
+    <button class="nav-btn" onclick="switchView('git')" id="nav-git">🔀 Git</button>
+    <button class="nav-btn" onclick="switchView('deploy')" id="nav-deploy">🚀 Deploy</button>
+  </div>
+  <div class="header-actions">
+    <div class="icon-btn" onclick="openCmdPalette()" title="Command Palette  Ctrl+P">⌘</div>
+    <div class="icon-btn" onclick="toggleSidebar()" title="Toggle Sidebar  Ctrl+B">☰</div>
+    <div class="icon-btn run" onclick="runCode()" title="Run  Ctrl+Enter">▶</div>
+    <div class="icon-btn" onclick="toggleAI()" title="AI Assistant  Ctrl+I">✦</div>
+  </div>
+</div>
+
+<!-- MAIN WORKSPACE -->
+<div class="workspace">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-tabs">
+      <div class="sidebar-tab active" onclick="switchSidebarTab('explorer', this)">FILES</div>
+      <div class="sidebar-tab" onclick="switchSidebarTab('search', this)">SRCH</div>
+      <div class="sidebar-tab" onclick="switchSidebarTab('git', this)">GIT</div>
+    </div>
+    <div class="sidebar-content" id="sidebar-content">
+
+      <!-- Explorer Tab -->
+      <div id="tab-explorer">
+        <div class="file-tree">
+          <div class="tree-section">
+            PROJECT
+            <div class="tree-add" onclick="openNewFileModal()" title="New File">+</div>
+          </div>
+          <div class="tree-folder">📁 src</div>
+          <div class="tree-item active" onclick="openFile('app.py')" oncontextmenu="showCtxMenu(event,'app.py')" data-file="app.py">
+            <span class="file-icon">🐍</span><span class="file-name">app.py</span>
+            <div class="file-actions"><span class="file-action-btn" onclick="startRename(event,'app.py')" title="Rename">✎</span><span class="file-action-btn" onclick="deleteFile(event,'app.py')" title="Delete">✕</span></div>
+          </div>
+          <div class="tree-item" onclick="openFile('index.html')" oncontextmenu="showCtxMenu(event,'index.html')" data-file="index.html">
+            <span class="file-icon">🌐</span><span class="file-name">index.html</span>
+            <div class="file-actions"><span class="file-action-btn" onclick="startRename(event,'index.html')" title="Rename">✎</span><span class="file-action-btn" onclick="deleteFile(event,'index.html')" title="Delete">✕</span></div>
+          </div>
+          <div class="tree-item" onclick="openFile('main.js')" oncontextmenu="showCtxMenu(event,'main.js')" data-file="main.js">
+            <span class="file-icon">📜</span><span class="file-name">main.js</span>
+            <div class="file-actions"><span class="file-action-btn" onclick="startRename(event,'main.js')" title="Rename">✎</span><span class="file-action-btn" onclick="deleteFile(event,'main.js')" title="Delete">✕</span></div>
+          </div>
+          <div class="tree-item" onclick="openFile('style.css')" oncontextmenu="showCtxMenu(event,'style.css')" data-file="style.css">
+            <span class="file-icon">🎨</span><span class="file-name">style.css</span>
+            <div class="file-actions"><span class="file-action-btn" onclick="startRename(event,'style.css')" title="Rename">✎</span><span class="file-action-btn" onclick="deleteFile(event,'style.css')" title="Delete">✕</span></div>
+          </div>
+          <div class="tree-item" onclick="openFile('README.md')" oncontextmenu="showCtxMenu(event,'README.md')" data-file="README.md">
+            <span class="file-icon">📄</span><span class="file-name">README.md</span>
+            <div class="file-actions"><span class="file-action-btn" onclick="startRename(event,'README.md')" title="Rename">✎</span><span class="file-action-btn" onclick="deleteFile(event,'README.md')" title="Delete">✕</span></div>
+          </div>
+          <div class="tree-section" style="margin-top:8px">CONFIG</div>
+          <div class="tree-item" onclick="openFile('requirements.txt')" oncontextmenu="showCtxMenu(event,'requirements.txt')" data-file="requirements.txt">
+            <span class="file-icon">📋</span><span class="file-name">requirements.txt</span>
+            <div class="file-actions"><span class="file-action-btn" onclick="startRename(event,'requirements.txt')" title="Rename">✎</span><span class="file-action-btn" onclick="deleteFile(event,'requirements.txt')" title="Delete">✕</span></div>
+          </div>
+          <div class="tree-item" onclick="openFile('.env')" oncontextmenu="showCtxMenu(event,'.env')" data-file=".env">
+            <span class="file-icon">🔒</span><span class="file-name">.env</span>
+            <div class="file-actions"><span class="file-action-btn" onclick="startRename(event,'.env')" title="Rename">✎</span><span class="file-action-btn" onclick="deleteFile(event,'.env')" title="Delete">✕</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search Tab -->
+      <div id="tab-search" style="display:none;padding:8px">
+        <input type="text" placeholder="Search files & content..." style="width:100%;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:inherit;font-size:12px;outline:none;margin-bottom:8px" oninput="searchFiles(this.value)">
+        <div id="search-results" style="font-size:11px;color:var(--text3)">Type to search...</div>
+      </div>
+
+      <!-- Git Tab -->
+      <div id="tab-git" style="display:none">
+        <div class="git-panel">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Changes</div>
+          <div class="git-status-item"><span class="git-badge M">M</span><span style="font-size:11px;color:var(--text2)">app.py</span></div>
+          <div class="git-status-item"><span class="git-badge A">A</span><span style="font-size:11px;color:var(--text2)">main.js</span></div>
+          <div class="git-status-item"><span class="git-badge D">D</span><span style="font-size:11px;color:var(--text3)">old.py</span></div>
+          <div class="git-actions" style="margin-top:10px">
+            <input type="text" placeholder="Commit message..." id="commit-msg" style="width:100%;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:inherit;font-size:11px;outline:none;margin-bottom:4px">
+            <button class="git-btn primary" onclick="gitCommit()">✓ Commit</button>
+            <button class="git-btn" onclick="gitAction('push')">↑ Push to GitHub</button>
+            <button class="git-btn" onclick="gitAction('pull')">↓ Pull</button>
+            <button class="git-btn" onclick="gitAction('branch')">⎇ New Branch</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- EDITOR AREA -->
+  <div class="editor-area">
+
+    <!-- TABS BAR -->
+    <div class="tabs-bar" id="tabs-bar">
+      <div class="tab active modified" id="tab-app.py" onclick="switchTab('app.py')">
+        <span class="tab-icon">🐍</span>app.py<span class="tab-close" onclick="closeTab(event,'app.py')">×</span>
+      </div>
+      <div class="tab" id="tab-index.html" onclick="switchTab('index.html')">
+        <span class="tab-icon">🌐</span>index.html<span class="tab-close" onclick="closeTab(event,'index.html')">×</span>
+      </div>
+    </div>
+
+    <!-- EDITOR TOOLBAR (NEW) -->
+    <div class="editor-toolbar" id="editor-toolbar">
+      <div class="breadcrumb" id="breadcrumb">
+        <span>📁 project</span>
+        <span class="bc-sep">/</span>
+        <span class="bc-file" id="bc-file">app.py</span>
+      </div>
+      <div class="toolbar-actions">
+        <button class="tool-btn" onclick="copyAllCode()" title="Copy All  Ctrl+Shift+C">⎘ copy</button>
+        <div class="tool-sep"></div>
+        <button class="tool-btn" id="wrap-btn" onclick="toggleWordWrap()" title="Word Wrap  Alt+Z">↩ wrap</button>
+        <button class="tool-btn" onclick="changeFontSize(-1)" title="Decrease Font">A-</button>
+        <button class="tool-btn" onclick="changeFontSize(1)" title="Increase Font">A+</button>
+        <div class="tool-sep"></div>
+        <button class="tool-btn" onclick="openFindBar()" title="Find  Ctrl+F">🔍</button>
+        <button class="tool-btn" onclick="runCode()" title="Run  Ctrl+Enter" style="color:var(--accent)">▶ run</button>
+      </div>
+    </div>
+
+    <!-- EDITOR PANE -->
+    <div class="editor-pane" id="editor-pane">
+      <!-- FIND BAR (NEW) -->
+      <div class="find-bar" id="find-bar" style="display:none">
+        <input class="find-input" id="find-input" placeholder="Find..." oninput="doFind(this.value)" onkeydown="handleFindKey(event)">
+        <input class="find-input" id="replace-input" placeholder="Replace..." style="width:110px" onkeydown="if(event.key==='Enter')doReplaceNext()">
+        <span class="find-sep"></span>
+        <button class="find-btn" onclick="findNext()">↓</button>
+        <button class="find-btn" onclick="findPrev()">↑</button>
+        <span class="find-count" id="find-count"></span>
+        <span class="find-sep"></span>
+        <button class="find-btn" onclick="doReplaceNext()">Replace</button>
+        <button class="find-btn" onclick="doReplaceAll()">All</button>
+        <span class="find-close" onclick="closeFindBar()">×</span>
+      </div>
+
+      <div class="editor-instance" style="display:flex;flex-direction:row;flex:1">
+        <div class="line-numbers" id="line-numbers"></div>
+        <div class="code-area" onscroll="syncScroll(this)">
+          <div class="code-content" id="code-content" contenteditable="true" spellcheck="false"
+            onkeydown="handleKeyDown(event)" oninput="handleInput()" onclick="updateCursorPos()" onkeyup="updateCursorPos()"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL RESIZE HANDLE (NEW) -->
+    <div class="panel-resize" id="panel-resize" title="Drag to resize"></div>
+
+    <!-- BOTTOM PANEL -->
+    <div class="bottom-panel" id="bottom-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active" onclick="switchPanel('terminal',this)" id="ptab-terminal">⚡ Terminal</div>
+        <div class="panel-tab" onclick="switchPanel('preview',this)" id="ptab-preview">🌐 Preview</div>
+        <div class="panel-tab" onclick="switchPanel('problems',this)" id="ptab-problems">⚠ Problems <span class="badge">2</span></div>
+        <div class="panel-tab" onclick="switchPanel('deploy-panel',this)" id="ptab-deploy-panel">🚀 Deploy</div>
+        <div class="panel-toggle" onclick="togglePanel()">▼</div>
+      </div>
+      <div class="panel-content">
+
+        <!-- Terminal -->
+        <div id="panel-terminal" class="terminal">
+          <div class="term-toolbar">
+            <button class="term-tool-btn" onclick="clearTerminal()">✕ clear</button>
+            <button class="term-tool-btn" onclick="copyTerminal()">⎘ copy</button>
+            <span style="margin-left:auto;font-size:10px;color:var(--text3)">Ctrl+` to focus</span>
+          </div>
+          <div class="term-body" id="term-body">
+            <div class="term-line"><span class="term-success">✓</span><span class="term-out">Exomnia DevKit v2.0 — Developer Terminal</span></div>
+            <div class="term-line" style="margin-top:4px"><span class="term-prompt">~/project</span><span class="term-path">$</span><span class="term-cmd">python --version</span></div>
+            <div class="term-line"><span class="term-out">Python 3.11.4</span></div>
+            <div class="term-line" style="margin-top:2px"><span class="term-prompt">~/project</span><span class="term-path">$</span><span class="term-cmd">pip install flask</span></div>
+            <div class="term-line"><span class="term-success">✓ Successfully installed flask-3.0.0</span></div>
+            <div class="term-line" style="margin-top:2px"><span class="term-prompt">~/project</span><span class="term-path">$</span><span class="term-cmd">python app.py</span></div>
+            <div class="term-line"><span class="term-info"> * Running on http://localhost:5000</span></div>
+            <div id="term-output"></div>
+          </div>
+          <div class="term-input-row" id="term-input-row">
+            <span class="term-prompt">~/project</span>
+            <span class="term-path">$</span>
+            <input class="term-input" id="term-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="type command..." onkeydown="handleTermInput(event)">
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div id="panel-preview" class="preview-panel" style="display:none">
+          <div class="preview-bar">
+            <span style="font-size:12px;color:var(--text3)">🌐</span>
+            <input class="preview-url" value="localhost:8080" id="preview-url">
+            <div class="icon-btn" onclick="refreshPreview()" style="width:26px;height:26px;font-size:12px" title="Refresh">↻</div>
+          </div>
+          <div class="preview-placeholder" id="preview-placeholder">
+            <div class="big">🌐</div>
+            <div>Run your code to see preview</div>
+            <button class="git-btn primary" onclick="runCode()" style="margin-top:4px">▶ Run &amp; Preview</button>
+          </div>
+          <iframe class="preview-frame" id="preview-frame" style="display:none"></iframe>
+        </div>
+
+        <!-- Problems -->
+        <div id="panel-problems" style="display:none;padding:8px;font-size:12px;overflow-y:auto;height:100%">
+          <div onclick="jumpToLine('app.py',14)" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.2);margin-bottom:6px;cursor:pointer">
+            <span style="color:var(--red)">✕</span>
+            <div style="flex:1"><div style="color:var(--text)">IndentationError: unexpected indent</div><div style="color:var(--text3);font-size:10px">app.py — line 14</div></div>
+            <span style="color:var(--text3);font-size:10px">Go ›</span>
+          </div>
+          <div onclick="jumpToLine('app.py',28)" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);cursor:pointer">
+            <span style="color:var(--accent3)">⚠</span>
+            <div style="flex:1"><div style="color:var(--text)">Variable 'data' used before assignment</div><div style="color:var(--text3);font-size:10px">app.py — line 28</div></div>
+            <span style="color:var(--text3);font-size:10px">Go ›</span>
+          </div>
+        </div>
+
+        <!-- Deploy Panel -->
+        <div id="panel-deploy-panel" class="deploy-panel" style="display:none">
+          <div class="deploy-card" onclick="deployTo('Render')"><span class="d-icon">☁️</span><div class="d-info"><div class="d-name">Render</div><div class="d-desc">Free Flask hosting</div></div><span class="d-status ready">READY</span></div>
+          <div class="deploy-card" onclick="deployTo('Railway')"><span class="d-icon">🚂</span><div class="d-info"><div class="d-name">Railway</div><div class="d-desc">Auto-deploy from git</div></div><span class="d-status live">LIVE</span></div>
+          <div class="deploy-card" onclick="deployTo('Firebase')"><span class="d-icon">🔥</span><div class="d-info"><div class="d-name">Firebase</div><div class="d-desc">Static + functions</div></div><span class="d-status ready">READY</span></div>
+          <div class="deploy-card" onclick="deployTo('VPS')"><span class="d-icon">🖥️</span><div class="d-info"><div class="d-name">VPS / SSH</div><div class="d-desc">Custom server deploy</div></div><span class="d-status ready">READY</span></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-item" onclick="gitAction('branch')">⎇ main</div>
+  <div class="status-item" id="status-lang">🐍 Python 3.11</div>
+  <div class="status-item" onclick="toggleAI()">✦ AI Ready</div>
+  <div class="status-item right" id="cursor-pos">Ln 1, Col 1</div>
+  <div class="status-item">UTF-8</div>
+  <div class="status-item" id="save-status">● Saved</div>
+  <div class="status-item" style="gap:2px">
+    <span class="status-font-btn" onclick="changeFontSize(-1)" title="Decrease font">A-</span>
+    <span class="status-font-btn" onclick="changeFontSize(1)" title="Increase font">A+</span>
+  </div>
+  <div class="status-item" onclick="openCmdPalette()" title="Command Palette  Ctrl+P">⌘ Ctrl+P</div>
+</div>
+
+<!-- AI OVERLAY -->
+<div class="ai-overlay" id="ai-overlay">
+  <div class="ai-header">
+    <div class="ai-pulse"></div>
+    <div class="ai-title">✦ AI Assistant</div>
+    <button class="ai-clear" id="key-btn" onclick="openKeyModal()" style="background:rgba(245,158,11,0.15);color:var(--accent3);border-color:rgba(245,158,11,0.3)">🔑 Key</button>
+    <button class="ai-clear" onclick="clearAI()">Clear</button>
+    <div class="ai-close" onclick="toggleAI()">×</div>
+  </div>
+  <div class="ai-messages" id="ai-messages">
+    <div class="ai-msg-wrap bot">
+      <div class="ai-msg bot">নমস্কার! আমি Exomnia AI। Code লিখতে, debug করতে, বা explain করতে বলুন। 🚀<br><span style="color:var(--text3);font-size:10px">Context-aware — reads your active file automatically.</span></div>
+    </div>
+    <div class="ai-chips">
+      <span class="ai-chip" onclick="aiPrompt('Write a Flask REST API endpoint for this')">Flask API</span>
+      <span class="ai-chip" onclick="aiPrompt('Find and fix bugs in my current file')">Fix Bugs</span>
+      <span class="ai-chip" onclick="aiPrompt('Explain this code line by line')">Explain</span>
+      <span class="ai-chip" onclick="aiPrompt('Optimize this code for performance')">Optimize</span>
+      <span class="ai-chip" onclick="aiPrompt('Add error handling and logging')">Add Errors</span>
+      <span class="ai-chip" onclick="aiPrompt('Write tests for this code')">Tests</span>
+    </div>
+  </div>
+  <div class="ai-input-row">
+    <textarea class="ai-input" id="ai-input" rows="1" placeholder="Ask anything... (Enter to send, Shift+Enter for new line)" onkeydown="handleAIInput(event)" oninput="autoResize(this)"></textarea>
+    <button class="ai-send" onclick="sendAI()" title="Send  Enter">↑</button>
+  </div>
+</div>
+
+<!-- API KEY MODAL -->
+<div class="modal-overlay" id="key-modal">
+  <div class="modal">
+    <div class="modal-title">🔑 API Key Setup</div>
+    <div class="modal-sub">Mobile বা standalone-এ AI চালাতে Anthropic API key দরকার। Key শুধু এই session-এ memory-তে থাকবে।</div>
+    <input class="modal-input" id="key-input" type="password" placeholder="sk-ant-api03-..." oninput="validateKeyInput()">
+    <div style="font-size:10px;color:var(--text3);margin-bottom:10px">🔗 Key নিন: <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--blue)">console.anthropic.com</a></div>
+    <div style="display:flex;gap:6px">
+      <button class="git-btn" onclick="closeKeyModal()">Cancel</button>
+      <button class="git-btn primary" id="key-save-btn" onclick="saveApiKey()">✓ Save &amp; Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div class="notif-container" id="notif-container"></div>
+
+<!-- COMMAND PALETTE (NEW) -->
+<div class="cmd-overlay" id="cmd-overlay" onclick="closeCmdPalette(event)">
+  <div class="cmd-box">
+    <input class="cmd-input" id="cmd-input" placeholder="Search files, commands, actions..." oninput="filterCmd(this.value)" onkeydown="handleCmdKey(event)" autocomplete="off">
+    <div class="cmd-results" id="cmd-results"></div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU (NEW) -->
+<div class="ctx-menu" id="ctx-menu">
+  <div class="ctx-label" id="ctx-filename"></div>
+  <div class="ctx-item" onclick="ctxAction('open')">📂 Open File</div>
+  <div class="ctx-item" onclick="ctxAction('rename')">✎ Rename</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxAction('copy-path')">⎘ Copy Path</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="ctxAction('delete')">✕ Delete</div>
+</div>
+
+<!-- NEW FILE MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">New File</div>
+    <div class="modal-sub">Quick templates — click to fill:</div>
+    <div class="modal-templates">
+      <span class="modal-tpl" onclick="setTpl('app.py')">🐍 Flask app</span>
+      <span class="modal-tpl" onclick="setTpl('index.html')">🌐 HTML page</span>
+      <span class="modal-tpl" onclick="setTpl('main.js')">📜 JS module</span>
+      <span class="modal-tpl" onclick="setTpl('style.css')">🎨 CSS file</span>
+      <span class="modal-tpl" onclick="setTpl('README.md')">📄 README</span>
+    </div>
+    <input class="modal-input" id="new-file-input" type="text" placeholder="filename.py" onkeydown="if(event.key==='Enter')createNewFile()">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="createNewFile()">Create</button>
+    </div>
+  </div>
+</div>
+
+
+  <script src="app.js"></script>
+</body>
+</html>
