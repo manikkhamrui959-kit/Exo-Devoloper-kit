@@ -206,7 +206,10 @@ let termHistory = [];
 let termHistIdx = -1;
 let aiOpen = false;
 let aiHistory = [];  // multi-turn conversation history
-let userApiKey = '';  // API key for standalone mobile use
+let userApiKey = '';       // Anthropic Claude API key
+let userDeepseekKey = '';  // DeepSeek API key
+let selectedProvider = 'claude';   // 'claude' | 'deepseek'
+let keyModalProvider = 'claude';   // which provider is active in key modal
 let cursorLine = 1;
 let wordWrap = false;
 let editorFontSize = 13;
@@ -1106,40 +1109,80 @@ async function sendAI() {
     const currentCode = files[activeFile] || '';
     const systemPrompt = `You are the AI coding assistant inside Exomnia DevKit, a mobile-first developer environment. Help the user concisely and practically. Current file: ${activeFile}\n\nFile content (first 1000 chars):\n${currentCode.slice(0, 1000)}\n\nRespond in a mix of English and Bengali when appropriate. Keep answers focused and actionable. Use \`backticks\` for code.`;
 
-    // Build headers — if userApiKey set use it, else rely on Claude.ai injection
-    const hdrs = { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' };
-    if (userApiKey) hdrs['x-api-key'] = userApiKey;
+    let text = '';
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: hdrs,
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: aiHistory
-      })
-    });
-
-    const data = await resp.json();
-    thinkDiv.remove();
-
-    // Check for API error (wrong key, quota etc.)
-    if (data.error) {
-      const errWrap = document.createElement('div');
-      errWrap.className = 'ai-msg-wrap bot';
-      if (data.error.type === 'authentication_error') {
-        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">🔑 API Key ভুল বা মেয়াদ শেষ। <span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">Key আপডেট করুন</span></div>`;
-      } else {
-        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ Error: ${data.error.message}</div>`;
+    if (selectedProvider === 'deepseek') {
+      // ── DeepSeek API (OpenAI-compatible) ──────────────────────
+      if (!userDeepseekKey) {
+        thinkDiv.remove();
+        const errWrap = document.createElement('div');
+        errWrap.className = 'ai-msg-wrap bot';
+        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--accent3)">🤖 DeepSeek API key দরকার।<br><span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">🔑 Key সেট করুন</span></div>`;
+        messages.appendChild(errWrap);
+        aiHistory.pop();
+        messages.scrollTop = messages.scrollHeight;
+        return;
       }
-      messages.appendChild(errWrap);
-      aiHistory.pop();
-      messages.scrollTop = messages.scrollHeight;
-      return;
-    }
+      const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userDeepseekKey}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          max_tokens: 1000,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...aiHistory
+          ]
+        })
+      });
+      const data = await resp.json();
+      thinkDiv.remove();
+      if (data.error) {
+        const errWrap = document.createElement('div');
+        errWrap.className = 'ai-msg-wrap bot';
+        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ DeepSeek Error: ${data.error.message || 'Unknown error'}<br><span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">Key চেক করুন</span></div>`;
+        messages.appendChild(errWrap);
+        aiHistory.pop();
+        messages.scrollTop = messages.scrollHeight;
+        return;
+      }
+      text = data.choices?.[0]?.message?.content || 'দুঃখিত, response পাওয়া যায়নি।';
 
-    const text = data.content?.[0]?.text || 'দুঃখিত, response পাওয়া যায়নি।';
+    } else {
+      // ── Claude / Anthropic API ─────────────────────────────────
+      const hdrs = { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' };
+      if (userApiKey) hdrs['x-api-key'] = userApiKey;
+
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: hdrs,
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: aiHistory
+        })
+      });
+      const data = await resp.json();
+      thinkDiv.remove();
+      if (data.error) {
+        const errWrap = document.createElement('div');
+        errWrap.className = 'ai-msg-wrap bot';
+        if (data.error.type === 'authentication_error') {
+          errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">🔑 Claude API Key ভুল বা মেয়াদ শেষ। <span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">Key আপডেট করুন</span></div>`;
+        } else {
+          errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ Error: ${data.error.message}</div>`;
+        }
+        messages.appendChild(errWrap);
+        aiHistory.pop();
+        messages.scrollTop = messages.scrollHeight;
+        return;
+      }
+      text = data.content?.[0]?.text || 'দুঃখিত, response পাওয়া যায়নি।';
+    }
 
     // Add assistant response to history
     aiHistory.push({ role: 'assistant', content: text });
@@ -1156,7 +1199,6 @@ async function sendAI() {
         <button class="ai-act-btn" onclick="copyAIMsg(this)">⎘ Copy</button>
         <button class="ai-act-btn" onclick="insertToEditor(this)">↙ Insert</button>
       </div>`;
-    // Store raw text for copy/insert
     botWrap.dataset.raw = text;
     messages.appendChild(botWrap);
 
@@ -1164,10 +1206,10 @@ async function sendAI() {
     thinkDiv.remove();
     const errWrap = document.createElement('div');
     errWrap.className = 'ai-msg-wrap bot';
-    // CORS error = standalone mode, needs API key
     const isCors = err.message?.includes('fetch') || err.name === 'TypeError';
-    if (isCors && !userApiKey) {
-      errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--accent3)">📱 Mobile/Standalone mode detected!<br><br>AI চালাতে API key দরকার।<br><span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">🔑 Key সেট করুন</span></div>`;
+    const hasKey = selectedProvider === 'claude' ? !!userApiKey : !!userDeepseekKey;
+    if (isCors && !hasKey) {
+      errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--accent3)">📱 Standalone mode — API key দরকার।<br><span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">🔑 Key সেট করুন</span></div>`;
     } else {
       errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ AI সংযোগে সমস্যা। আবার চেষ্টা করুন।</div>`;
     }
@@ -1179,40 +1221,107 @@ async function sendAI() {
 
 
 // ═══════════════════════════════════════════════
+// PROVIDER SWITCHING
+// ═══════════════════════════════════════════════
+function switchProvider(p) {
+  selectedProvider = p;
+  const btnClaude = document.getElementById('prov-claude');
+  const btnDeep   = document.getElementById('prov-deepseek');
+  if (btnClaude) {
+    btnClaude.style.background = p === 'claude' ? 'var(--accent)' : 'transparent';
+    btnClaude.style.color      = p === 'claude' ? '#000' : 'var(--text3)';
+    btnClaude.style.fontWeight = p === 'claude' ? '600' : '400';
+  }
+  if (btnDeep) {
+    btnDeep.style.background = p === 'deepseek' ? 'var(--blue)' : 'transparent';
+    btnDeep.style.color      = p === 'deepseek' ? '#fff' : 'var(--text3)';
+    btnDeep.style.fontWeight = p === 'deepseek' ? '600' : '400';
+  }
+  const title = document.querySelector('.ai-title');
+  if (title) title.textContent = p === 'deepseek' ? '🤖 DeepSeek AI' : '✦ AI Assistant';
+  updateKeyBtn();
+}
+
+function updateKeyBtn() {
+  const keyBtn = document.getElementById('key-btn');
+  if (!keyBtn) return;
+  const hasKey = selectedProvider === 'claude' ? !!userApiKey : !!userDeepseekKey;
+  if (hasKey) {
+    keyBtn.textContent = '🔑 Connected';
+    keyBtn.style.background = 'rgba(63,185,80,0.15)';
+    keyBtn.style.color = 'var(--green)';
+    keyBtn.style.borderColor = 'rgba(63,185,80,0.3)';
+  } else {
+    keyBtn.textContent = '🔑 Key';
+    keyBtn.style.background = 'rgba(245,158,11,0.15)';
+    keyBtn.style.color = 'var(--accent3)';
+    keyBtn.style.borderColor = 'rgba(245,158,11,0.3)';
+  }
+}
+
+// ═══════════════════════════════════════════════
 // API KEY MANAGEMENT
 // ═══════════════════════════════════════════════
 function openKeyModal() {
-  const overlay = document.getElementById('key-modal');
-  overlay.classList.add('open');
-  const inp = document.getElementById('key-input');
-  inp.value = userApiKey || '';
-  validateKeyInput();
-  setTimeout(() => inp.focus(), 200);
+  document.getElementById('key-modal').classList.add('open');
+  switchKeyProvider(selectedProvider);
+  setTimeout(() => document.getElementById('key-input').focus(), 200);
 }
 
 function closeKeyModal() {
   document.getElementById('key-modal').classList.remove('open');
 }
 
+function switchKeyProvider(p) {
+  keyModalProvider = p;
+  const tabC = document.getElementById('prov-tab-claude');
+  const tabD = document.getElementById('prov-tab-deepseek');
+  const sub  = document.getElementById('key-modal-sub');
+  const inp  = document.getElementById('key-input');
+  const link = document.getElementById('key-link-div');
+
+  if (p === 'claude') {
+    if (tabC) { tabC.className = 'git-btn primary'; }
+    if (tabD) { tabD.className = 'git-btn'; }
+    if (sub)  sub.textContent = 'Anthropic API key দিয়ে Claude চালান। Key শুধু এই session-এ থাকবে।';
+    if (inp)  { inp.placeholder = 'sk-ant-api03-...'; inp.value = userApiKey || ''; }
+    if (link) link.innerHTML = '🔗 Key নিন: <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--blue)">console.anthropic.com</a>';
+  } else {
+    if (tabC) { tabC.className = 'git-btn'; }
+    if (tabD) { tabD.className = 'git-btn primary'; }
+    if (sub)  sub.textContent = 'DeepSeek API key দিয়ে DeepSeek-V3 চালান। Key শুধু এই session-এ থাকবে।';
+    if (inp)  { inp.placeholder = 'sk-...'; inp.value = userDeepseekKey || ''; }
+    if (link) link.innerHTML = '🔗 Key নিন: <a href="https://platform.deepseek.com/api-keys" target="_blank" style="color:var(--blue)">platform.deepseek.com</a>';
+  }
+  validateKeyInput();
+}
+
 function validateKeyInput() {
   const val = document.getElementById('key-input').value.trim();
   const btn = document.getElementById('key-save-btn');
-  btn.disabled = !val.startsWith('sk-ant-');
+  let valid = false;
+  if (keyModalProvider === 'claude') {
+    valid = val.startsWith('sk-ant-');
+  } else {
+    valid = val.startsWith('sk-') && val.length > 10;
+  }
+  btn.disabled = !valid;
   btn.style.opacity = btn.disabled ? '0.5' : '1';
 }
 
 function saveApiKey() {
   const val = document.getElementById('key-input').value.trim();
-  if (!val.startsWith('sk-ant-')) return;
-  userApiKey = val;
-  // Update key button to show connected
-  const keyBtn = document.getElementById('key-btn');
-  keyBtn.textContent = '🔑 Connected';
-  keyBtn.style.background = 'rgba(63,185,80,0.15)';
-  keyBtn.style.color = 'var(--green)';
-  keyBtn.style.borderColor = 'rgba(63,185,80,0.3)';
+  if (keyModalProvider === 'claude') {
+    if (!val.startsWith('sk-ant-')) return;
+    userApiKey = val;
+  } else {
+    if (!val.startsWith('sk-') || val.length <= 10) return;
+    userDeepseekKey = val;
+  }
+  switchProvider(keyModalProvider);
   closeKeyModal();
-  showNotif('✓ API Key সেট হয়েছে! AI ready.', 'success');
+  const name = keyModalProvider === 'claude' ? 'Claude' : 'DeepSeek';
+  showNotif(`✓ ${name} API Key সেট হয়েছে! AI ready.`, 'success');
 }
 
 function copyAIMsg(btn) {
