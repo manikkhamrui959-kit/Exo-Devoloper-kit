@@ -1290,3 +1290,4 @@ window.addEventListener('load', () => {
 
   refreshIcons();
 });
+
