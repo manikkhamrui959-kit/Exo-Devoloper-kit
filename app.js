@@ -205,11 +205,11 @@ let activePanel = 'terminal';
 let termHistory = [];
 let termHistIdx = -1;
 let aiOpen = false;
-let aiHistory = [];  // multi-turn conversation history
-let userApiKey = '';       // Anthropic Claude API key
-let userDeepseekKey = '';  // DeepSeek API key
-let selectedProvider = 'claude';   // 'claude' | 'deepseek'
-let keyModalProvider = 'claude';   // which provider is active in key modal
+let aiHistory = [];
+let userApiKey = '';
+let userDeepseekKey = '';
+let selectedProvider = 'claude';
+let keyModalProvider = 'claude';
 let cursorLine = 1;
 let wordWrap = false;
 let editorFontSize = 13;
@@ -298,9 +298,14 @@ function updateBreadcrumb(filename) {
 
 function updateStatusLang(filename) {
   const ext = filename.split('.').pop();
-  const langs = {py:'🐍 Python 3.11', js:'📜 JavaScript', html:'🌐 HTML', css:'🎨 CSS', md:'📄 Markdown', txt:'📄 Text', env:'🔒 ENV'};
+  const iconMap = {py:'file-code-2',js:'file-code-2',html:'globe',css:'palette',md:'file-text',txt:'file-text',env:'lock'};
+  const labelMap = {py:'Python 3.11',js:'JavaScript',html:'HTML',css:'CSS',md:'Markdown',txt:'Text',env:'ENV'};
   const el = document.getElementById('status-lang');
-  if (el) el.textContent = langs[ext] || `📄 ${ext.toUpperCase()}`;
+  if (!el) return;
+  const icon = iconMap[ext] || 'file';
+  const label = labelMap[ext] || ext.toUpperCase();
+  el.innerHTML = `<i data-lucide="${icon}" style="width:12px;height:12px"></i>${label}`;
+  refreshIcons();
 }
 
 function handleInput() {
@@ -310,10 +315,10 @@ function handleInput() {
   const tab = document.getElementById(`tab-${activeFile}`);
   if (tab && !tab.classList.contains('modified')) tab.classList.add('modified');
   updateLineNumbers(text);
-  document.getElementById('save-status').textContent = '● Unsaved';
+  document.getElementById('save-status').innerHTML = '<i data-lucide="circle-dotted" style="width:12px;height:12px"></i>Unsaved'; refreshIcons();
   clearTimeout(window._saveTimer);
   window._saveTimer = setTimeout(() => {
-    document.getElementById('save-status').textContent = '● Saved';
+    document.getElementById('save-status').innerHTML = '<i data-lucide="check-circle" style="width:12px;height:12px"></i>Saved'; refreshIcons();
   }, 1500);
 }
 
@@ -324,7 +329,7 @@ function handleKeyDown(e) {
   }
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault();
-    document.getElementById('save-status').textContent = '● Saved';
+    document.getElementById('save-status').innerHTML = '<i data-lucide="check-circle" style="width:12px;height:12px"></i>Saved'; refreshIcons();
     notify('Saved', 'success');
   }
   if ((e.ctrlKey || e.metaKey) && e.key === '/') {
@@ -525,15 +530,13 @@ function switchTab(filename) {
 function openFile(filename) {
   if (!openTabs.includes(filename)) {
     openTabs.push(filename);
-    const ext = filename.split('.').pop();
-    const icons = {py:'🐍',js:'📜',html:'🌐',css:'🎨',md:'📄',txt:'📋',env:'🔒'};
-    const icon = icons[ext] || '📄';
     const tab = document.createElement('div');
     tab.className = 'tab';
     tab.id = `tab-${filename}`;
     tab.onclick = () => switchTab(filename);
-    tab.innerHTML = `<span class="tab-icon">${icon}</span>${filename}<span class="tab-close" onclick="closeTab(event,'${filename}')">×</span>`;
+    tab.innerHTML = `<span class="tab-icon ${fileIconClass(filename)}">${fileIconSvg(filename,12)}</span>${filename}<span class="tab-close" onclick="closeTab(event,'${filename}')"><i data-lucide="x" style="width:10px;height:10px"></i></span>`;
     document.getElementById('tabs-bar').appendChild(tab);
+    refreshIcons();
   }
   switchTab(filename);
 }
@@ -597,21 +600,20 @@ function renameFile(oldName, newName, item, input) {
   delete files[oldName];
   item.setAttribute('data-file', newName);
   item.onclick = () => openFile(newName);
-  const ext = newName.split('.').pop();
-  const icons = {py:'🐍',js:'📜',html:'🌐',css:'🎨',md:'📄',txt:'📋',env:'🔒'};
-  item.querySelector('.file-icon').textContent = icons[ext] || '📄';
+  item.querySelector('.file-icon').className = 'file-icon ' + fileIconClass(newName);
+  item.querySelector('.file-icon').innerHTML = fileIconSvg(newName, 14);
   const nameEl = document.createElement('span');
   nameEl.className = 'file-name';
   nameEl.textContent = newName;
   input.replaceWith(nameEl);
   // update actions
-  item.querySelector('.file-actions').innerHTML = `<span class="file-action-btn" onclick="startRename(event,'${newName}')" title="Rename">✎</span><span class="file-action-btn" onclick="deleteFile(event,'${newName}')" title="Delete">✕</span>`;
+  item.querySelector('.file-actions').innerHTML = `<span class="file-action-btn" onclick="startRename(event,'${newName}')" title="Rename"><i data-lucide="pencil" style="width:11px;height:11px"></i></span><span class="file-action-btn" onclick="deleteFile(event,'${newName}')" title="Delete"><i data-lucide="trash-2" style="width:11px;height:11px"></i></span>`;
   // update tab if open
   const tabIdx = openTabs.indexOf(oldName);
   if (tabIdx !== -1) {
     openTabs[tabIdx] = newName;
     const oldTab = document.getElementById(`tab-${oldName}`);
-    if (oldTab) { oldTab.id = `tab-${newName}`; oldTab.querySelector('.tab-close').setAttribute('onclick', `closeTab(event,'${newName}')`); oldTab.innerHTML = `<span class="tab-icon">${icons[ext]||'📄'}</span>${newName}<span class="tab-close" onclick="closeTab(event,'${newName}')">×</span>`; oldTab.onclick = () => switchTab(newName); }
+    if (oldTab) { oldTab.id = `tab-${newName}`; oldTab.innerHTML = `<span class="tab-icon ${fileIconClass(newName)}">${fileIconSvg(newName,12)}</span>${newName}<span class="tab-close" onclick="closeTab(event,'${newName}')"><i data-lucide="x" style="width:10px;height:10px"></i></span>`; oldTab.onclick = () => switchTab(newName); refreshIcons(); }
     if (activeFile === oldName) { activeFile = newName; updateBreadcrumb(newName); updateStatusLang(newName); }
   }
   notify(`Renamed to ${newName}`, 'success');
@@ -657,20 +659,20 @@ document.addEventListener('click', () => document.getElementById('ctx-menu').cla
 // COMMAND PALETTE (NEW)
 // ═══════════════════════════════════════════════
 const cmdCommands = [
-  { label: 'Run Code', icon: '▶', tag: 'action', kbd: 'Ctrl+Enter', fn: runCode },
-  { label: 'Toggle Sidebar', icon: '☰', tag: 'action', kbd: 'Ctrl+B', fn: toggleSidebar },
-  { label: 'AI Assistant', icon: '✦', tag: 'action', kbd: 'Ctrl+I', fn: toggleAI },
-  { label: 'Find in File', icon: '🔍', tag: 'action', kbd: 'Ctrl+F', fn: openFindBar },
-  { label: 'New File', icon: '+', tag: 'action', fn: openNewFileModal },
-  { label: 'Toggle Word Wrap', icon: '↩', tag: 'action', kbd: 'Alt+Z', fn: toggleWordWrap },
-  { label: 'Deploy to Render', icon: '☁️', tag: 'deploy', fn: () => deployTo('Render') },
-  { label: 'Deploy to Railway', icon: '🚂', tag: 'deploy', fn: () => deployTo('Railway') },
-  { label: 'Git Push', icon: '↑', tag: 'git', fn: () => gitAction('push') },
-  { label: 'Git Pull', icon: '↓', tag: 'git', fn: () => gitAction('pull') },
-  { label: 'New Branch', icon: '⎇', tag: 'git', fn: () => gitAction('branch') },
-  { label: 'Focus Terminal', icon: '⚡', tag: 'action', kbd: 'Ctrl+`', fn: focusTerminal },
-  { label: 'Clear Terminal', icon: '✕', tag: 'action', fn: clearTerminal },
-  { label: 'Run Preview', icon: '🌐', tag: 'action', fn: () => { switchPanel('preview', document.getElementById('ptab-preview')); showPreview(); } },
+  { label: 'Run Code',         icon: 'play',               tag: 'action', kbd: 'Ctrl+Enter', fn: runCode },
+  { label: 'Toggle Sidebar',   icon: 'panel-left',         tag: 'action', kbd: 'Ctrl+B',     fn: toggleSidebar },
+  { label: 'AI Assistant',     icon: 'sparkles',           tag: 'action', kbd: 'Ctrl+I',     fn: toggleAI },
+  { label: 'Find in File',     icon: 'search',             tag: 'action', kbd: 'Ctrl+F',     fn: openFindBar },
+  { label: 'New File',         icon: 'file-plus',          tag: 'action',                    fn: openNewFileModal },
+  { label: 'Toggle Word Wrap', icon: 'wrap-text',          tag: 'action', kbd: 'Alt+Z',      fn: toggleWordWrap },
+  { label: 'Deploy to Render', icon: 'cloud',              tag: 'deploy',                    fn: () => deployTo('Render') },
+  { label: 'Deploy to Railway',icon: 'train-front',        tag: 'deploy',                    fn: () => deployTo('Railway') },
+  { label: 'Git Push',         icon: 'arrow-up-from-line', tag: 'git',                       fn: () => gitAction('push') },
+  { label: 'Git Pull',         icon: 'arrow-down-from-line',tag:'git',                       fn: () => gitAction('pull') },
+  { label: 'New Branch',       icon: 'git-branch',         tag: 'git',                       fn: () => gitAction('branch') },
+  { label: 'Focus Terminal',   icon: 'terminal',           tag: 'action', kbd: 'Ctrl+`',     fn: focusTerminal },
+  { label: 'Clear Terminal',   icon: 'trash-2',            tag: 'action',                    fn: clearTerminal },
+  { label: 'Run Preview',      icon: 'monitor',            tag: 'action',                    fn: () => { switchPanel('preview', document.getElementById('ptab-preview')); showPreview(); } },
 ];
 
 function openCmdPalette() {
@@ -704,7 +706,7 @@ function filterCmd(query) {
     html += `<div class="cmd-section">Files</div>`;
     fileItems.forEach((item, i) => {
       cmdItems.push(item);
-      html += `<div class="cmd-item${cmdItems.length-1===0?' sel':''}" onclick="runCmd(${cmdItems.length-1})"><span class="cmd-icon">${item.icon}</span><span class="cmd-label">${item.label}</span><span class="cmd-tag">${item.tag}</span></div>`;
+      html += `<div class="cmd-item${cmdItems.length-1===0?' sel':''}" onclick="runCmd(${cmdItems.length-1})"><span class="cmd-icon">${fileIconSvg(item.label,14)}</span><span class="cmd-label">${item.label}</span><span class="cmd-tag">${item.tag}</span></div>`;
     });
   }
 
@@ -712,12 +714,13 @@ function filterCmd(query) {
     html += `<div class="cmd-section">Commands</div>`;
     cmdItems2.forEach(item => {
       cmdItems.push(item);
-      html += `<div class="cmd-item" onclick="runCmd(${cmdItems.length-1})"><span class="cmd-icon">${item.icon}</span><span class="cmd-label">${item.label}</span>${item.kbd ? `<span class="cmd-kbd">${item.kbd}</span>` : `<span class="cmd-tag">${item.tag}</span>`}</div>`;
+      html += `<div class="cmd-item" onclick="runCmd(${cmdItems.length-1})"><span class="cmd-icon"><i data-lucide="${item.icon}" style="width:14px;height:14px"></i></span><span class="cmd-label">${item.label}</span>${item.kbd ? `<span class="cmd-kbd">${item.kbd}</span>` : `<span class="cmd-tag">${item.tag}</span>`}</div>`;
     });
   }
 
   if (!html) html = `<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">No results</div>`;
   resultsEl.innerHTML = html;
+  refreshIcons();
   cmdSelIdx = 0;
   updateCmdSel();
 }
@@ -744,8 +747,19 @@ function runCmd(idx) {
 }
 
 function getFileIcon(f) {
-  const ext = f.split('.').pop();
-  return {py:'🐍',js:'📜',html:'🌐',css:'🎨',md:'📄',txt:'📋',env:'🔒'}[ext] || '📄';
+  const ext = f.split('.').pop().toLowerCase();
+  return {py:'file-code-2',js:'file-code-2',html:'globe',css:'palette',md:'file-text',txt:'file-text',env:'lock',txt:'list'}[ext] || 'file';
+}
+function fileIconClass(f) {
+  const ext = f.split('.').pop().toLowerCase();
+  return {py:'fi-py',js:'fi-js',html:'fi-html',css:'fi-css',md:'fi-md',env:'fi-env'}[ext] || '';
+}
+function fileIconSvg(f, size=14) {
+  const name = getFileIcon(f);
+  return `<i data-lucide="${name}" style="width:${size}px;height:${size}px"></i>`;
+}
+function refreshIcons() {
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // ═══════════════════════════════════════════════
@@ -768,7 +782,7 @@ function switchSidebarTab(tab, el) {
 function togglePanel() {
   panelOpen = !panelOpen;
   document.getElementById('bottom-panel').classList.toggle('collapsed', !panelOpen);
-  document.querySelector('.panel-toggle').textContent = panelOpen ? '▼' : '▲';
+  document.querySelector('.panel-toggle').innerHTML = panelOpen ? '<i data-lucide="chevron-down" style="width:14px;height:14px"></i>' : '<i data-lucide="chevron-up" style="width:14px;height:14px"></i>'; refreshIcons();
 }
 
 function switchPanel(panel, el) {
@@ -782,7 +796,7 @@ function switchPanel(panel, el) {
   if (!panelOpen) {
     panelOpen = true;
     document.getElementById('bottom-panel').classList.remove('collapsed');
-    document.querySelector('.panel-toggle').textContent = '▼';
+    document.querySelector('.panel-toggle').innerHTML = '<i data-lucide="chevron-down" style="width:14px;height:14px"></i>'; refreshIcons();
   }
 }
 
@@ -1021,17 +1035,14 @@ function createNewFile() {
   const templateContent = fileTemplates[baseName] || fileTemplates[name] || `# ${name}\n`;
   files[name] = templateContent;
 
-  const ext = name.split('.').pop();
-  const icons = {py:'🐍',js:'📜',html:'🌐',css:'🎨',md:'📄',txt:'📋',env:'🔒'};
-  const icon = icons[ext] || '📄';
-
   const treeItem = document.createElement('div');
   treeItem.className = 'tree-item';
   treeItem.setAttribute('data-file', name);
   treeItem.onclick = () => openFile(name);
   treeItem.setAttribute('oncontextmenu', `showCtxMenu(event,'${name}')`);
-  treeItem.innerHTML = `<span class="file-icon">${icon}</span><span class="file-name">${name}</span><div class="file-actions"><span class="file-action-btn" onclick="startRename(event,'${name}')" title="Rename">✎</span><span class="file-action-btn" onclick="deleteFile(event,'${name}')" title="Delete">✕</span></div>`;
+  treeItem.innerHTML = `<span class="file-icon ${fileIconClass(name)}">${fileIconSvg(name)}</span><span class="file-name">${name}</span><div class="file-actions"><span class="file-action-btn" onclick="startRename(event,'${name}')" title="Rename"><i data-lucide="pencil" style="width:11px;height:11px"></i></span><span class="file-action-btn" onclick="deleteFile(event,'${name}')" title="Delete"><i data-lucide="trash-2" style="width:11px;height:11px"></i></span></div>`;
   document.getElementById('tab-explorer').querySelector('.file-tree').appendChild(treeItem);
+  refreshIcons();
 
   closeModal();
   openFile(name);
@@ -1048,7 +1059,7 @@ function searchFiles(query) {
     const idx = content.toLowerCase().indexOf(query.toLowerCase());
     const preview = idx !== -1 ? '…' + content.slice(Math.max(0,idx-20), idx+40).replace(/\n/g,' ') + '…' : '';
     return `<div style="padding:5px 6px;border-radius:4px;cursor:pointer;margin-bottom:2px" onclick="openFile('${f}')" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-      <div style="color:var(--text2);font-size:12px">${getFileIcon(f)} ${f}</div>
+      <div style="color:var(--text2);font-size:12px;display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace"><span class="${fileIconClass(f)}" style="display:flex">${fileIconSvg(f,12)}</span>${f}</div>
       ${preview ? `<div style="color:var(--text3);font-size:10px;margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${preview}</div>` : ''}
     </div>`;
   }).join('');
@@ -1066,7 +1077,7 @@ function toggleAI() {
 function clearAI() {
   aiHistory = [];
   const msgs = document.getElementById('ai-messages');
-  msgs.innerHTML = `<div class="ai-msg-wrap bot"><div class="ai-msg bot">Chat cleared. কিছু জিজ্ঞেস করুন! 🚀</div></div>
+  msgs.innerHTML = `<div class="ai-msg-wrap bot"><div class="ai-msg bot">Chat cleared. কিছু জিজ্ঞেস করুন!</div></div>
   <div class="ai-chips">
     <span class="ai-chip" onclick="aiPrompt('Write a Flask REST API endpoint for this')">Flask API</span>
     <span class="ai-chip" onclick="aiPrompt('Find and fix bugs in my current file')">Fix Bugs</span>
@@ -1109,80 +1120,40 @@ async function sendAI() {
     const currentCode = files[activeFile] || '';
     const systemPrompt = `You are the AI coding assistant inside Exomnia DevKit, a mobile-first developer environment. Help the user concisely and practically. Current file: ${activeFile}\n\nFile content (first 1000 chars):\n${currentCode.slice(0, 1000)}\n\nRespond in a mix of English and Bengali when appropriate. Keep answers focused and actionable. Use \`backticks\` for code.`;
 
-    let text = '';
+    // Build headers — if userApiKey set use it, else rely on Claude.ai injection
+    const hdrs = { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' };
+    if (userApiKey) hdrs['x-api-key'] = userApiKey;
 
-    if (selectedProvider === 'deepseek') {
-      // ── DeepSeek API (OpenAI-compatible) ──────────────────────
-      if (!userDeepseekKey) {
-        thinkDiv.remove();
-        const errWrap = document.createElement('div');
-        errWrap.className = 'ai-msg-wrap bot';
-        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--accent3)">🤖 DeepSeek API key দরকার।<br><span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">🔑 Key সেট করুন</span></div>`;
-        messages.appendChild(errWrap);
-        aiHistory.pop();
-        messages.scrollTop = messages.scrollHeight;
-        return;
-      }
-      const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${userDeepseekKey}`
-        },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          max_tokens: 1000,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...aiHistory
-          ]
-        })
-      });
-      const data = await resp.json();
-      thinkDiv.remove();
-      if (data.error) {
-        const errWrap = document.createElement('div');
-        errWrap.className = 'ai-msg-wrap bot';
-        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ DeepSeek Error: ${data.error.message || 'Unknown error'}<br><span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">Key চেক করুন</span></div>`;
-        messages.appendChild(errWrap);
-        aiHistory.pop();
-        messages.scrollTop = messages.scrollHeight;
-        return;
-      }
-      text = data.choices?.[0]?.message?.content || 'দুঃখিত, response পাওয়া যায়নি।';
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: hdrs,
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: aiHistory
+      })
+    });
 
-    } else {
-      // ── Claude / Anthropic API ─────────────────────────────────
-      const hdrs = { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' };
-      if (userApiKey) hdrs['x-api-key'] = userApiKey;
+    const data = await resp.json();
+    thinkDiv.remove();
 
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: hdrs,
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1000,
-          system: systemPrompt,
-          messages: aiHistory
-        })
-      });
-      const data = await resp.json();
-      thinkDiv.remove();
-      if (data.error) {
-        const errWrap = document.createElement('div');
-        errWrap.className = 'ai-msg-wrap bot';
-        if (data.error.type === 'authentication_error') {
-          errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">🔑 Claude API Key ভুল বা মেয়াদ শেষ। <span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">Key আপডেট করুন</span></div>`;
-        } else {
-          errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ Error: ${data.error.message}</div>`;
-        }
-        messages.appendChild(errWrap);
-        aiHistory.pop();
-        messages.scrollTop = messages.scrollHeight;
-        return;
+    // Check for API error (wrong key, quota etc.)
+    if (data.error) {
+      const errWrap = document.createElement('div');
+      errWrap.className = 'ai-msg-wrap bot';
+      if (data.error.type === 'authentication_error') {
+        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">🔑 API Key ভুল বা মেয়াদ শেষ। <span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">Key আপডেট করুন</span></div>`;
+      } else {
+        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ Error: ${data.error.message}</div>`;
       }
-      text = data.content?.[0]?.text || 'দুঃখিত, response পাওয়া যায়নি।';
+      messages.appendChild(errWrap);
+      aiHistory.pop();
+      messages.scrollTop = messages.scrollHeight;
+      return;
     }
+
+    const text = data.content?.[0]?.text || 'দুঃখিত, response পাওয়া যায়নি।';
 
     // Add assistant response to history
     aiHistory.push({ role: 'assistant', content: text });
@@ -1196,20 +1167,22 @@ async function sendAI() {
       .replace(/\n/g,'<br>');
     botWrap.innerHTML = `<div class="ai-msg bot">${rendered}</div>
       <div class="ai-msg-actions">
-        <button class="ai-act-btn" onclick="copyAIMsg(this)">⎘ Copy</button>
-        <button class="ai-act-btn" onclick="insertToEditor(this)">↙ Insert</button>
+        <button class="ai-act-btn" onclick="copyAIMsg(this)"><i data-lucide="copy" style="width:11px;height:11px"></i>Copy</button>
+        <button class="ai-act-btn" onclick="insertToEditor(this)"><i data-lucide="corner-down-left" style="width:11px;height:11px"></i>Insert</button>
       </div>`;
+    // Store raw text for copy/insert
     botWrap.dataset.raw = text;
     messages.appendChild(botWrap);
+    refreshIcons();
 
   } catch (err) {
     thinkDiv.remove();
     const errWrap = document.createElement('div');
     errWrap.className = 'ai-msg-wrap bot';
+    // CORS error = standalone mode, needs API key
     const isCors = err.message?.includes('fetch') || err.name === 'TypeError';
-    const hasKey = selectedProvider === 'claude' ? !!userApiKey : !!userDeepseekKey;
-    if (isCors && !hasKey) {
-      errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--accent3)">📱 Standalone mode — API key দরকার।<br><span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">🔑 Key সেট করুন</span></div>`;
+    if (isCors && !userApiKey) {
+      errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--accent3)">📱 Mobile/Standalone mode detected!<br><br>AI চালাতে API key দরকার।<br><span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">🔑 Key সেট করুন</span></div>`;
     } else {
       errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ AI সংযোগে সমস্যা। আবার চেষ্টা করুন।</div>`;
     }
@@ -1227,18 +1200,12 @@ function switchProvider(p) {
   selectedProvider = p;
   const btnClaude = document.getElementById('prov-claude');
   const btnDeep   = document.getElementById('prov-deepseek');
-  if (btnClaude) {
-    btnClaude.style.background = p === 'claude' ? 'var(--accent)' : 'transparent';
-    btnClaude.style.color      = p === 'claude' ? '#000' : 'var(--text3)';
-    btnClaude.style.fontWeight = p === 'claude' ? '600' : '400';
-  }
-  if (btnDeep) {
-    btnDeep.style.background = p === 'deepseek' ? 'var(--blue)' : 'transparent';
-    btnDeep.style.color      = p === 'deepseek' ? '#fff' : 'var(--text3)';
-    btnDeep.style.fontWeight = p === 'deepseek' ? '600' : '400';
-  }
+  if (btnClaude) btnClaude.className = 'ai-prov-btn' + (p === 'claude' ? ' active-claude' : '');
+  if (btnDeep)   btnDeep.className   = 'ai-prov-btn' + (p === 'deepseek' ? ' active-deepseek' : '');
+  const pulse = document.querySelector('.ai-pulse');
+  if (pulse) pulse.className = p === 'deepseek' ? 'ai-pulse deepseek' : 'ai-pulse';
   const title = document.querySelector('.ai-title');
-  if (title) title.textContent = p === 'deepseek' ? '🤖 DeepSeek AI' : '✦ AI Assistant';
+  if (title) title.textContent = p === 'deepseek' ? 'DeepSeek AI' : 'AI Assistant';
   updateKeyBtn();
 }
 
@@ -1247,16 +1214,13 @@ function updateKeyBtn() {
   if (!keyBtn) return;
   const hasKey = selectedProvider === 'claude' ? !!userApiKey : !!userDeepseekKey;
   if (hasKey) {
-    keyBtn.textContent = '🔑 Connected';
-    keyBtn.style.background = 'rgba(63,185,80,0.15)';
-    keyBtn.style.color = 'var(--green)';
-    keyBtn.style.borderColor = 'rgba(63,185,80,0.3)';
+    keyBtn.className = 'ai-clear connected';
+    keyBtn.innerHTML = '<i data-lucide="check-circle-2" style="width:11px;height:11px"></i>Connected';
   } else {
-    keyBtn.textContent = '🔑 Key';
-    keyBtn.style.background = 'rgba(245,158,11,0.15)';
-    keyBtn.style.color = 'var(--accent3)';
-    keyBtn.style.borderColor = 'rgba(245,158,11,0.3)';
+    keyBtn.className = 'ai-clear key-btn';
+    keyBtn.innerHTML = '<i data-lucide="key" style="width:11px;height:11px"></i>Add Key';
   }
+  refreshIcons();
 }
 
 // ═══════════════════════════════════════════════
@@ -1279,19 +1243,18 @@ function switchKeyProvider(p) {
   const sub  = document.getElementById('key-modal-sub');
   const inp  = document.getElementById('key-input');
   const link = document.getElementById('key-link-div');
-
   if (p === 'claude') {
-    if (tabC) { tabC.className = 'git-btn primary'; }
-    if (tabD) { tabD.className = 'git-btn'; }
+    if (tabC) tabC.className = 'prov-tab active-claude';
+    if (tabD) tabD.className = 'prov-tab';
     if (sub)  sub.textContent = 'Anthropic API key দিয়ে Claude চালান। Key শুধু এই session-এ থাকবে।';
     if (inp)  { inp.placeholder = 'sk-ant-api03-...'; inp.value = userApiKey || ''; }
-    if (link) link.innerHTML = '🔗 Key নিন: <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--blue)">console.anthropic.com</a>';
+    if (link) link.innerHTML = 'Key নিন: <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--blue)">console.anthropic.com</a>';
   } else {
-    if (tabC) { tabC.className = 'git-btn'; }
-    if (tabD) { tabD.className = 'git-btn primary'; }
+    if (tabC) tabC.className = 'prov-tab';
+    if (tabD) tabD.className = 'prov-tab active-deepseek';
     if (sub)  sub.textContent = 'DeepSeek API key দিয়ে DeepSeek-V3 চালান। Key শুধু এই session-এ থাকবে।';
     if (inp)  { inp.placeholder = 'sk-...'; inp.value = userDeepseekKey || ''; }
-    if (link) link.innerHTML = '🔗 Key নিন: <a href="https://platform.deepseek.com/api-keys" target="_blank" style="color:var(--blue)">platform.deepseek.com</a>';
+    if (link) link.innerHTML = 'Key নিন: <a href="https://platform.deepseek.com/api-keys" target="_blank" style="color:var(--blue)">platform.deepseek.com</a>';
   }
   validateKeyInput();
 }
@@ -1299,12 +1262,7 @@ function switchKeyProvider(p) {
 function validateKeyInput() {
   const val = document.getElementById('key-input').value.trim();
   const btn = document.getElementById('key-save-btn');
-  let valid = false;
-  if (keyModalProvider === 'claude') {
-    valid = val.startsWith('sk-ant-');
-  } else {
-    valid = val.startsWith('sk-') && val.length > 10;
-  }
+  const valid = keyModalProvider === 'claude' ? val.startsWith('sk-ant-') : (val.startsWith('sk-') && val.length > 10);
   btn.disabled = !valid;
   btn.style.opacity = btn.disabled ? '0.5' : '1';
 }
@@ -1321,13 +1279,13 @@ function saveApiKey() {
   switchProvider(keyModalProvider);
   closeKeyModal();
   const name = keyModalProvider === 'claude' ? 'Claude' : 'DeepSeek';
-  showNotif(`✓ ${name} API Key সেট হয়েছে! AI ready.`, 'success');
+  notify(`${name} API Key সেট হয়েছে! AI ready.`, 'success');
 }
 
 function copyAIMsg(btn) {
   const wrap = btn.closest('.ai-msg-wrap');
   const text = wrap?.dataset.raw || wrap?.querySelector('.ai-msg')?.innerText || '';
-  navigator.clipboard.writeText(text).then(() => { btn.textContent = '✓ Copied'; setTimeout(() => btn.textContent = '⎘ Copy', 1500); });
+  navigator.clipboard.writeText(text).then(() => { btn.innerHTML = '<i data-lucide="check" style="width:11px;height:11px"></i>Copied'; refreshIcons(); setTimeout(() => { btn.innerHTML = '<i data-lucide="copy" style="width:11px;height:11px"></i>Copy'; refreshIcons(); }, 1500); });
 }
 
 function insertToEditor(btn) {
@@ -1358,10 +1316,11 @@ function notify(msg, type = 'info') {
   const container = document.getElementById('notif-container');
   const notif = document.createElement('div');
   notif.className = `notif ${type}`;
-  const icons = {info:'ℹ', success:'✓', error:'✕'};
-  notif.innerHTML = `<span>${icons[type] || 'ℹ'}</span>${msg}`;
+  const iconNames = {info:'info',success:'check-circle-2',error:'x-circle'};
+  notif.innerHTML = `<i data-lucide="${iconNames[type]||'info'}" style="width:14px;height:14px"></i>${msg}`;
   notif.onclick = () => notif.remove();
   container.appendChild(notif);
+  refreshIcons();
   setTimeout(() => {
     notif.style.opacity = '0';
     notif.style.transform = 'translateX(20px)';
@@ -1424,5 +1383,6 @@ window.addEventListener('load', () => {
   });
 
   // Mobile: close cmd palette on overlay click already handled inline
+  refreshIcons();
   notify('DevKit ready — Ctrl+P for commands', 'success');
 });
