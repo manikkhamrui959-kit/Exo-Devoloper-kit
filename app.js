@@ -1,189 +1,7 @@
 // ═══════════════════════════════════════════════
-// FILE DATA
+// FILE DATA — starts empty, populated by user
 // ═══════════════════════════════════════════════
-const files = {
-  'app.py': `from flask import Flask, jsonify, request
-from flask_cors import CORS
-import sqlite3
-import os
-
-app = Flask(__name__)
-CORS(app)
-
-DB_PATH = 'data.db'
-
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS scores
-                 (id INTEGER PRIMARY KEY,
-                  player TEXT NOT NULL,
-                  score INTEGER NOT NULL,
-                  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    conn.commit()
-    conn.close()
-
-@app.route('/api/ping')
-def ping():
-    return jsonify({'status': 'ok', 'msg': 'Exomnia API running'})
-
-@app.route('/api/leaderboard')
-def leaderboard():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('SELECT player, score FROM scores ORDER BY score DESC LIMIT 10')
-    rows = c.fetchall()
-    conn.close()
-    return jsonify([{'player': r[0], 'score': r[1]} for r in rows])
-
-@app.route('/api/player', methods=['POST'])
-def save_score():
-    data = request.json
-    player = data.get('player', 'Anonymous')
-    score = data.get('score', 0)
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('INSERT INTO scores (player, score) VALUES (?, ?)', (player, score))
-    conn.commit()
-    conn.close()
-    return jsonify({'status': 'saved', 'player': player, 'score': score})
-
-if __name__ == '__main__':
-    init_db()
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)`,
-
-  'index.html': `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My App</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div class="container">
-    <h1>🚀 Hello from Exomnia!</h1>
-    <p>Edit this file and see live preview.</p>
-    <button onclick="fetchData()">Load Data</button>
-    <div id="output"></div>
-  </div>
-  <script src="main.js"><\/script>
-</body>
-</html>`,
-
-  'main.js': `// Exomnia DevKit — main.js
-const API_BASE = 'http://localhost:5000';
-
-async function fetchData() {
-  try {
-    const res = await fetch(\`\${API_BASE}/api/leaderboard\`);
-    const data = await res.json();
-    renderLeaderboard(data);
-  } catch (err) {
-    console.error('API Error:', err);
-  }
-}
-
-function renderLeaderboard(scores) {
-  const output = document.getElementById('output');
-  output.innerHTML = scores.map((s, i) =>
-    \`<div class="score-item">
-      <span class="rank">#\${i + 1}</span>
-      <span class="player">\${s.player}</span>
-      <span class="score">\${s.score.toLocaleString()}</span>
-    </div>\`
-  ).join('');
-}
-
-// Auto-refresh every 30 seconds
-setInterval(fetchData, 30000);
-fetchData();`,
-
-  'style.css': `/* Exomnia App Styles */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  font-family: 'JetBrains Mono', monospace;
-  background: #080c10;
-  color: #e6edf3;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.container {
-  max-width: 600px;
-  width: 90%;
-  padding: 40px;
-  background: #0d1117;
-  border-radius: 16px;
-  border: 1px solid #21262d;
-}
-
-h1 { font-size: 28px; color: #00d4aa; margin-bottom: 12px; }
-
-button {
-  padding: 10px 20px;
-  background: #00d4aa;
-  color: #080c10;
-  border: none;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 14px;
-  cursor: pointer;
-  margin-top: 16px;
-}
-
-.score-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px;
-  border-bottom: 1px solid #21262d;
-  font-size: 14px;
-}
-
-.rank { color: #f59e0b; font-weight: 700; }
-.player { flex: 1; }
-.score { color: #00d4aa; font-weight: 700; }`,
-
-  'README.md': `# Exomnia DevKit Project
-
-## Setup
-\`\`\`bash
-pip install -r requirements.txt
-python app.py
-\`\`\`
-
-## API Endpoints
-- GET  /api/ping
-- GET  /api/leaderboard
-- POST /api/player
-
-## Deploy
-See the Deploy panel in DevKit.
-
-## Keyboard Shortcuts
-- Ctrl+P — Command Palette
-- Ctrl+F — Find & Replace
-- Ctrl+B — Toggle Sidebar
-- Ctrl+I — AI Assistant
-- Ctrl+Enter — Run Code
-- Ctrl+S — Save
-- Ctrl+/ — Comment Line
-- Ctrl+\` — Focus Terminal`,
-
-  'requirements.txt': `flask==3.0.0
-flask-cors==4.0.0
-gunicorn==21.2.0`,
-
-  '.env': `FLASK_ENV=development
-PORT=5000
-SECRET_KEY=your-secret-key-here
-DATABASE_URL=sqlite:///data.db`
-};
+const files = {};
 
 // File templates for new file creation
 const fileTemplates = {
@@ -197,8 +15,8 @@ const fileTemplates = {
 // ═══════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════
-let activeFile = 'app.py';
-let openTabs = ['app.py', 'index.html'];
+let activeFile = null;
+let openTabs = [];
 let sidebarOpen = true;
 let panelOpen = true;
 let activePanel = 'terminal';
@@ -219,9 +37,39 @@ let ctxTarget = null;
 let cmdSelIdx = 0;
 let cmdItems = [];
 
+// ── Real-time git tracking ──
+const gitChanges = { modified: new Set(), added: new Set(), deleted: new Set() };
+
 // ═══════════════════════════════════════════════
-// SYNTAX HIGHLIGHTING
+// EDITOR EMPTY STATE
 // ═══════════════════════════════════════════════
+function showEditorEmpty(show) {
+  const empty  = document.getElementById('editor-empty');
+  const active = document.getElementById('editor-active');
+  const toolbar = document.getElementById('editor-toolbar');
+  if (empty)  empty.style.display  = show ? 'flex' : 'none';
+  if (active) active.style.display = show ? 'none' : 'flex';
+  if (toolbar) toolbar.style.display = show ? 'none' : '';
+  if (show) updateStatusLang(null);
+}
+
+// ═══════════════════════════════════════════════
+// REAL-TIME GIT PANEL
+// ═══════════════════════════════════════════════
+function updateGitPanel() {
+  const list = document.getElementById('git-changes-list');
+  if (!list) return;
+  const total = gitChanges.modified.size + gitChanges.added.size + gitChanges.deleted.size;
+  if (!total) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:11px;font-family:\'Inter\',sans-serif;padding:8px 4px">No changes</div>';
+    return;
+  }
+  let html = '';
+  gitChanges.added.forEach(f    => { html += `<div class="git-status-item"><span class="git-badge A">A</span><span style="font-size:11px;color:var(--text2)">${f}</span></div>`; });
+  gitChanges.modified.forEach(f => { html += `<div class="git-status-item"><span class="git-badge M">M</span><span style="font-size:11px;color:var(--text2)">${f}</span></div>`; });
+  gitChanges.deleted.forEach(f  => { html += `<div class="git-status-item"><span class="git-badge D">D</span><span style="font-size:11px;color:var(--text3)">${f}</span></div>`; });
+  list.innerHTML = html;
+}
 function highlight(code, filename) {
   const ext = (filename || '').split('.').pop();
   let escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -297,12 +145,18 @@ function updateBreadcrumb(filename) {
 }
 
 function updateStatusLang(filename) {
-  const ext = filename.split('.').pop();
-  const iconMap = {py:'file-code-2',js:'file-code-2',html:'globe',css:'palette',md:'file-text',txt:'file-text',env:'lock'};
+  const ext = filename ? filename.split('.').pop().toLowerCase() : null;
+  const iconMap  = {py:'file-code-2',js:'file-code-2',html:'globe',css:'palette',md:'file-text',txt:'file-text',env:'lock'};
   const labelMap = {py:'Python 3.11',js:'JavaScript',html:'HTML',css:'CSS',md:'Markdown',txt:'Text',env:'ENV'};
+  const show = !!filename;
+  ['status-lang','status-branch','cursor-pos','save-status',
+   'status-sep-branch','status-sep-lang','status-sep-cur'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? '' : 'none';
+  });
   const el = document.getElementById('status-lang');
-  if (!el) return;
-  const icon = iconMap[ext] || 'file';
+  if (!el || !ext) return;
+  const icon  = iconMap[ext]  || 'file';
   const label = labelMap[ext] || ext.toUpperCase();
   el.innerHTML = `<i data-lucide="${icon}" style="width:12px;height:12px"></i>${label}`;
   refreshIcons();
@@ -315,11 +169,17 @@ function handleInput() {
   const tab = document.getElementById(`tab-${activeFile}`);
   if (tab && !tab.classList.contains('modified')) tab.classList.add('modified');
   updateLineNumbers(text);
-  document.getElementById('save-status').innerHTML = '<i data-lucide="circle-dotted" style="width:12px;height:12px"></i>Unsaved'; refreshIcons();
+  const saveEl = document.getElementById('save-status');
+  if (saveEl) { saveEl.innerHTML = '<i data-lucide="circle-dotted" style="width:12px;height:12px"></i>Unsaved'; refreshIcons(); }
+  // real-time git tracking
+  if (!gitChanges.added.has(activeFile)) gitChanges.modified.add(activeFile);
+  updateGitPanel();
   clearTimeout(window._saveTimer);
   window._saveTimer = setTimeout(() => {
-    document.getElementById('save-status').innerHTML = '<i data-lucide="check-circle" style="width:12px;height:12px"></i>Saved'; refreshIcons();
-  }, 1500);
+    const se = document.getElementById('save-status');
+    if (se) { se.innerHTML = '<i data-lucide="check-circle" style="width:12px;height:12px"></i>Saved'; refreshIcons(); }
+    if (tab) tab.classList.remove('modified');
+  }, 1200);
 }
 
 function handleKeyDown(e) {
@@ -538,6 +398,7 @@ function openFile(filename) {
     document.getElementById('tabs-bar').appendChild(tab);
     refreshIcons();
   }
+  showEditorEmpty(false);
   switchTab(filename);
 }
 
@@ -548,17 +409,30 @@ function closeTab(e, filename) {
   const tab = document.getElementById(`tab-${filename}`);
   if (tab) tab.remove();
   if (activeFile === filename) {
-    if (openTabs.length > 0) switchTab(openTabs[Math.max(0, idx-1)]);
-    else { document.getElementById('code-content').innerHTML = ''; document.getElementById('bc-file').textContent = ''; }
+    if (openTabs.length > 0) {
+      switchTab(openTabs[Math.max(0, idx - 1)]);
+    } else {
+      activeFile = null;
+      document.getElementById('code-content').innerHTML = '';
+      document.getElementById('bc-file').textContent = '';
+      showEditorEmpty(true);
+    }
   }
 }
 
 function deleteFile(e, filename) {
   e.stopPropagation();
-  if (!confirm(`Delete ${filename}?`)) return;
+  if (!confirm(`Delete "${filename}"?`)) return;
   delete files[filename];
   const treeItem = document.querySelector(`[data-file="${filename}"]`);
   if (treeItem) treeItem.remove();
+  // update tree empty state
+  if (!Object.keys(files).length) document.getElementById('tree-empty').style.display = '';
+  // git tracking
+  gitChanges.added.delete(filename);
+  gitChanges.modified.delete(filename);
+  if (!gitChanges.added.has(filename)) gitChanges.deleted.add(filename);
+  updateGitPanel();
   closeTab({stopPropagation:()=>{}}, filename);
   notify(`Deleted ${filename}`, 'error');
 }
@@ -975,8 +849,14 @@ function gitCommit() {
   if (!msg) { notify('Enter a commit message', 'error'); return; }
   switchPanel('terminal', document.getElementById('ptab-terminal'));
   addTermLine(`git commit -m "${msg}"`);
-  addTermOutput(`[main a3f8c2d] ${msg}`, 'success');
+  addTermOutput(`[main ${Math.random().toString(16).slice(2,9)}] ${msg}`, 'success');
+  addTermOutput(` ${gitChanges.modified.size + gitChanges.added.size} file(s) changed`, 'out');
   document.getElementById('commit-msg').value = '';
+  // clear git tracking after commit
+  gitChanges.modified.clear();
+  gitChanges.added.clear();
+  gitChanges.deleted.clear();
+  updateGitPanel();
   notify('Committed: ' + msg, 'success');
 }
 
@@ -1041,8 +921,14 @@ function createNewFile() {
   treeItem.onclick = () => openFile(name);
   treeItem.setAttribute('oncontextmenu', `showCtxMenu(event,'${name}')`);
   treeItem.innerHTML = `<span class="file-icon ${fileIconClass(name)}">${fileIconSvg(name)}</span><span class="file-name">${name}</span><div class="file-actions"><span class="file-action-btn" onclick="startRename(event,'${name}')" title="Rename"><i data-lucide="pencil" style="width:11px;height:11px"></i></span><span class="file-action-btn" onclick="deleteFile(event,'${name}')" title="Delete"><i data-lucide="trash-2" style="width:11px;height:11px"></i></span></div>`;
-  document.getElementById('tab-explorer').querySelector('.file-tree').appendChild(treeItem);
+  document.getElementById('tab-explorer').querySelector('#tree-items').appendChild(treeItem);
   refreshIcons();
+  // update tree empty state
+  document.getElementById('tree-empty').style.display = 'none';
+  // track as new file in git
+  gitChanges.added.add(name);
+  gitChanges.modified.delete(name);
+  updateGitPanel();
 
   closeModal();
   openFile(name);
@@ -1376,13 +1262,12 @@ document.addEventListener('keydown', e => {
 // INIT
 // ═══════════════════════════════════════════════
 window.addEventListener('load', () => {
-  loadFile('app.py');
+  // Start with empty editor
+  showEditorEmpty(true);
 
   document.getElementById('modal-overlay').addEventListener('click', e => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
   });
 
-  // Mobile: close cmd palette on overlay click already handled inline
   refreshIcons();
-  notify('DevKit ready — Ctrl+P for commands', 'success');
 });
