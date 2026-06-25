@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Exomnia DevKit</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">EXOMNIA<span>DevKit</span></div>
+  <div class="header-nav">
+    <button class="nav-btn active" onclick="switchView('editor')" id="nav-editor">
+      <i data-lucide="code-2"></i><span>Editor</span>
+    </button>
+    <button class="nav-btn" onclick="switchView('files')" id="nav-files">
+      <i data-lucide="folder"></i><span>Files</span>
+    </button>
+    <button class="nav-btn" onclick="switchView('git')" id="nav-git">
+      <i data-lucide="git-branch"></i><span>Git</span>
+    </button>
+    <button class="nav-btn" onclick="switchView('deploy')" id="nav-deploy">
+      <i data-lucide="rocket"></i><span>Deploy</span>
+    </button>
+  </div>
+  <div class="header-actions">
+    <div class="icon-btn" onclick="openCmdPalette()" title="Command Palette  Ctrl+P">
+      <i data-lucide="command"></i>
+    </div>
+    <div class="icon-btn" onclick="toggleSidebar()" title="Toggle Sidebar  Ctrl+B">
+      <i data-lucide="panel-left"></i>
+    </div>
+    <div class="icon-btn run" onclick="runCode()" title="Run  Ctrl+Enter">
+      <i data-lucide="play"></i>
+    </div>
+    <div class="icon-btn ai-btn" onclick="toggleAI()" title="AI Assistant  Ctrl+I">
+      <i data-lucide="sparkles"></i>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN WORKSPACE -->
+<div class="workspace">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-tabs">
+      <div class="sidebar-tab active" onclick="switchSidebarTab('explorer',this)">
+        <i data-lucide="files"></i>FILES
+      </div>
+      <div class="sidebar-tab" onclick="switchSidebarTab('search',this)">
+        <i data-lucide="search"></i>SEARCH
+      </div>
+      <div class="sidebar-tab" onclick="switchSidebarTab('git',this)">
+        <i data-lucide="git-branch"></i>GIT
+      </div>
+    </div>
+    <div class="sidebar-content" id="sidebar-content">
+
+      <!-- Explorer Tab -->
+      <div id="tab-explorer">
+        <div class="file-tree" id="file-tree">
+          <div class="tree-section">
+            FILES
+            <div class="tree-add" onclick="openNewFileModal()" title="New File">
+              <i data-lucide="plus"></i>
+            </div>
+          </div>
+          <div id="tree-items">
+            <!-- files added dynamically -->
+          </div>
+          <div id="tree-empty" style="padding:24px 16px;text-align:center">
+            <div style="color:var(--text3);font-size:11px;font-family:'Inter',sans-serif;line-height:1.7">
+              No files yet.<br>
+              <span onclick="openNewFileModal()" style="color:var(--accent);cursor:pointer;font-weight:500">+ New File</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search Tab -->
+      <div id="tab-search" style="display:none;padding:8px">
+        <input type="text" placeholder="Search files & content..."
+          style="width:100%;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;outline:none;margin-bottom:8px;transition:border-color 0.15s"
+          oninput="searchFiles(this.value)" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+        <div id="search-results" style="font-size:11px;color:var(--text3);font-family:'Inter',sans-serif">Type to search...</div>
+      </div>
+
+      <!-- Git Tab -->
+      <div id="tab-git" style="display:none">
+        <div class="git-panel">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;font-family:'Inter',sans-serif;font-weight:600">Changes</div>
+          <div id="git-changes-list">
+            <div style="color:var(--text3);font-size:11px;font-family:'Inter',sans-serif;padding:8px 4px">No changes</div>
+          </div>
+          <div class="git-actions" style="margin-top:10px">
+            <input type="text" placeholder="Commit message..." id="commit-msg"
+              style="width:100%;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Inter',sans-serif;font-size:11px;outline:none;margin-bottom:6px;transition:border-color 0.15s"
+              onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+            <button class="git-btn primary" onclick="gitCommit()">
+              <i data-lucide="check"></i>Commit
+            </button>
+            <button class="git-btn" onclick="gitAction('push')">
+              <i data-lucide="arrow-up-from-line"></i>Push to GitHub
+            </button>
+            <button class="git-btn" onclick="gitAction('pull')">
+              <i data-lucide="arrow-down-from-line"></i>Pull
+            </button>
+            <button class="git-btn" onclick="gitAction('branch')">
+              <i data-lucide="git-branch"></i>New Branch
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- EDITOR AREA -->
+  <div class="editor-area">
+
+    <!-- TABS BAR -->
+    <div class="tabs-bar" id="tabs-bar">
+      <!-- tabs added dynamically -->
+    </div>
+
+    <!-- EDITOR TOOLBAR -->
+    <div class="editor-toolbar" id="editor-toolbar">
+      <div class="breadcrumb" id="breadcrumb">
+        <i data-lucide="folder" style="width:12px;height:12px"></i>
+        <span>project</span>
+        <span class="bc-sep">/</span>
+        <span class="bc-file" id="bc-file">app.py</span>
+      </div>
+      <div class="toolbar-actions">
+        <button class="tool-btn" onclick="copyAllCode()" title="Copy All">
+          <i data-lucide="copy"></i>Copy
+        </button>
+        <div class="tool-sep"></div>
+        <button class="tool-btn" id="wrap-btn" onclick="toggleWordWrap()" title="Word Wrap  Alt+Z">
+          <i data-lucide="wrap-text"></i>Wrap
+        </button>
+        <button class="tool-btn" onclick="changeFontSize(-1)" title="Decrease Font">A−</button>
+        <button class="tool-btn" onclick="changeFontSize(1)" title="Increase Font">A+</button>
+        <div class="tool-sep"></div>
+        <button class="tool-btn" onclick="openFindBar()" title="Find  Ctrl+F">
+          <i data-lucide="search"></i>
+        </button>
+        <button class="tool-btn" onclick="runCode()" title="Run  Ctrl+Enter" style="color:var(--accent)">
+          <i data-lucide="play"></i>Run
+        </button>
+      </div>
+    </div>
+
+    <!-- EDITOR PANE -->
+    <div class="editor-pane" id="editor-pane">
+
+      <!-- EMPTY STATE -->
+      <div id="editor-empty" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg)">
+        <i data-lucide="file-code" style="width:48px;height:48px;color:var(--text3);opacity:0.3"></i>
+        <div style="text-align:center">
+          <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text2);margin-bottom:4px">No file open</div>
+          <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text3)">Create or open a file to start coding</div>
+        </div>
+        <button onclick="openNewFileModal()" style="padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:'Inter',sans-serif;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">
+          <i data-lucide="plus" style="width:14px;height:14px"></i>New File
+        </button>
+      </div>
+      <!-- FIND BAR -->
+      <div id="editor-active" style="display:none;flex:1;flex-direction:column;position:relative;overflow:hidden">
+      <div class="find-bar" id="find-bar" style="display:none">
+        <input class="find-input" id="find-input" placeholder="Find..." oninput="doFind(this.value)" onkeydown="handleFindKey(event)">
+        <input class="find-input" id="replace-input" placeholder="Replace..." style="width:110px" onkeydown="if(event.key==='Enter')doReplaceNext()">
+        <span class="find-sep"></span>
+        <button class="find-btn" onclick="findNext()"><i data-lucide="chevron-down"></i></button>
+        <button class="find-btn" onclick="findPrev()"><i data-lucide="chevron-up"></i></button>
+        <span class="find-count" id="find-count"></span>
+        <span class="find-sep"></span>
+        <button class="find-btn" onclick="doReplaceNext()">Replace</button>
+        <button class="find-btn" onclick="doReplaceAll()">All</button>
+        <span class="find-close" onclick="closeFindBar()"><i data-lucide="x"></i></span>
+      </div>
+
+      <div class="editor-instance" style="display:flex;flex-direction:row;flex:1">
+        <div class="line-numbers" id="line-numbers"></div>
+        <div class="code-area" onscroll="syncScroll(this)">
+          <div class="code-content" id="code-content" contenteditable="true" spellcheck="false"
+            onkeydown="handleKeyDown(event)" oninput="handleInput()" onclick="updateCursorPos()" onkeyup="updateCursorPos()"></div>
+        </div>
+      </div>
+      </div><!-- /editor-active -->
+    </div><!-- /editor-pane -->
+
+    <!-- PANEL RESIZE HANDLE -->
+    <div class="panel-resize" id="panel-resize" title="Drag to resize"></div>
+
+    <!-- BOTTOM PANEL -->
+    <div class="bottom-panel" id="bottom-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active" onclick="switchPanel('terminal',this)" id="ptab-terminal">
+          <i data-lucide="terminal"></i>Terminal
+        </div>
+        <div class="panel-tab" onclick="switchPanel('preview',this)" id="ptab-preview">
+          <i data-lucide="globe"></i>Preview
+        </div>
+        <div class="panel-tab" onclick="switchPanel('problems',this)" id="ptab-problems">
+          <i data-lucide="triangle-alert"></i>Problems<span class="badge" id="problems-badge" style="display:none">0</span>
+        </div>
+        <div class="panel-tab" onclick="switchPanel('deploy-panel',this)" id="ptab-deploy-panel">
+          <i data-lucide="rocket"></i>Deploy
+        </div>
+        <div class="panel-toggle" onclick="togglePanel()">
+          <i data-lucide="chevron-down"></i>
+        </div>
+      </div>
+      <div class="panel-content">
+
+        <!-- Terminal -->
+        <div id="panel-terminal" class="terminal">
+          <div class="term-toolbar">
+            <button class="term-tool-btn" onclick="clearTerminal()">Clear</button>
+            <button class="term-tool-btn" onclick="copyTerminal()">Copy</button>
+            <span style="margin-left:auto;font-size:10px;color:var(--text3)">Ctrl+` to focus</span>
+          </div>
+          <div class="term-body" id="term-body">
+            <div id="term-output"></div>
+          </div>
+          <div class="term-input-row" id="term-input-row">
+            <span class="term-prompt">~/project</span>
+            <span class="term-path"> $</span>
+            <input class="term-input" id="term-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="type a command..." onkeydown="handleTermInput(event)">
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div id="panel-preview" class="preview-panel" style="display:none">
+          <div class="preview-bar">
+            <i data-lucide="globe" style="width:14px;height:14px;color:var(--text3)"></i>
+            <input class="preview-url" value="localhost:8080" id="preview-url">
+            <div class="icon-btn" onclick="refreshPreview()" style="width:26px;height:26px" title="Refresh">
+              <i data-lucide="refresh-cw" style="width:13px;height:13px"></i>
+            </div>
+          </div>
+          <div class="preview-placeholder" id="preview-placeholder">
+            <i data-lucide="monitor" style="width:40px;height:40px;opacity:0.2"></i>
+            <div>Run your code to see a preview</div>
+            <button class="git-btn primary" onclick="runCode()" style="margin-top:4px">
+              <i data-lucide="play"></i>Run &amp; Preview
+            </button>
+          </div>
+          <iframe class="preview-frame" id="preview-frame" style="display:none"></iframe>
+        </div>
+
+        <!-- Problems -->
+        <div id="panel-problems" style="display:none;padding:8px;font-size:12px;overflow-y:auto;height:100%;font-family:'Inter',sans-serif">
+          <div id="problems-list">
+            <div style="color:var(--text3);font-size:11px;padding:12px 4px;text-align:center">No problems detected</div>
+          </div>
+        </div>
+
+        <!-- Deploy Panel -->
+        <div id="panel-deploy-panel" class="deploy-panel" style="display:none">
+          <div class="deploy-card" onclick="deployTo('Render')">
+            <div class="d-icon"><i data-lucide="cloud" style="color:#46b3e6"></i></div>
+            <div class="d-info"><div class="d-name">Render</div><div class="d-desc">Free Flask hosting</div></div>
+            <span class="d-status ready">READY</span>
+          </div>
+          <div class="deploy-card" onclick="deployTo('Railway')">
+            <div class="d-icon"><i data-lucide="train-front" style="color:#a78bfa"></i></div>
+            <div class="d-info"><div class="d-name">Railway</div><div class="d-desc">Auto-deploy from git</div></div>
+            <span class="d-status live">LIVE</span>
+          </div>
+          <div class="deploy-card" onclick="deployTo('Firebase')">
+            <div class="d-icon"><i data-lucide="flame" style="color:#fb923c"></i></div>
+            <div class="d-info"><div class="d-name">Firebase</div><div class="d-desc">Static + functions</div></div>
+            <span class="d-status ready">READY</span>
+          </div>
+          <div class="deploy-card" onclick="deployTo('VPS')">
+            <div class="d-icon"><i data-lucide="server" style="color:#4ade80"></i></div>
+            <div class="d-info"><div class="d-name">VPS / SSH</div><div class="d-desc">Custom server deploy</div></div>
+            <span class="d-status ready">READY</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-item accent" onclick="gitAction('branch')" id="status-branch" style="display:none">
+    <i data-lucide="git-branch"></i><span id="status-branch-name">main</span>
+  </div>
+  <div class="status-sep" id="status-sep-branch" style="display:none"></div>
+  <div class="status-item" id="status-lang" style="display:none">
+    <i data-lucide="file"></i><span id="status-lang-text">—</span>
+  </div>
+  <div class="status-sep" id="status-sep-lang" style="display:none"></div>
+  <div class="status-item" onclick="toggleAI()">
+    <i data-lucide="sparkles"></i>AI Ready
+  </div>
+  <div class="status-item right" id="cursor-pos" style="display:none">
+    <i data-lucide="move-horizontal"></i>Ln 1, Col 1
+  </div>
+  <div class="status-sep" id="status-sep-cur" style="display:none"></div>
+  <div class="status-item" id="save-status" style="display:none">
+    <i data-lucide="check-circle"></i>Saved
+  </div>
+  <div class="status-sep"></div>
+  <div class="status-item" style="gap:3px">
+    <span class="status-font-btn" onclick="changeFontSize(-1)" title="Decrease font">A−</span>
+    <span class="status-font-btn" onclick="changeFontSize(1)" title="Increase font">A+</span>
+  </div>
+  <div class="status-sep"></div>
+  <div class="status-item" onclick="openCmdPalette()" title="Command Palette">
+    <i data-lucide="command"></i>Ctrl+P
+  </div>
+</div>
+
+<!-- AI OVERLAY -->
+<div class="ai-overlay" id="ai-overlay">
+  <div class="ai-header">
+    <div class="ai-pulse"></div>
+    <div class="ai-title">AI Assistant</div>
+    <!-- Provider segmented control -->
+    <div class="ai-provider-seg">
+      <button class="ai-prov-btn active-claude" id="prov-claude" onclick="switchProvider('claude')">
+        <i data-lucide="sparkles"></i>Claude
+      </button>
+      <button class="ai-prov-btn" id="prov-deepseek" onclick="switchProvider('deepseek')">
+        <i data-lucide="bot"></i>DeepSeek
+      </button>
+    </div>
+    <div class="ai-actions-right">
+      <button class="ai-clear key-btn" id="key-btn" onclick="openKeyModal()">
+        <i data-lucide="key"></i>Add Key
+      </button>
+      <button class="ai-clear" onclick="clearAI()">
+        <i data-lucide="rotate-ccw"></i>Clear
+      </button>
+      <div class="ai-close" onclick="toggleAI()"><i data-lucide="x"></i></div>
+    </div>
+  </div>
+  <div class="ai-messages" id="ai-messages">
+    <div class="ai-msg-wrap bot">
+      <div class="ai-msg bot">নমস্কার! আমি Exomnia AI। Code লিখতে, debug করতে, বা explain করতে বলুন।<br><span style="color:var(--text3);font-size:10px;margin-top:4px;display:block">Context-aware — reads your active file automatically.</span></div>
+    </div>
+    <div class="ai-chips">
+      <span class="ai-chip" onclick="aiPrompt('Write a Flask REST API endpoint for this')">Flask API</span>
+      <span class="ai-chip" onclick="aiPrompt('Find and fix bugs in my current file')">Fix Bugs</span>
+      <span class="ai-chip" onclick="aiPrompt('Explain this code line by line')">Explain</span>
+      <span class="ai-chip" onclick="aiPrompt('Optimize this code for performance')">Optimize</span>
+      <span class="ai-chip" onclick="aiPrompt('Add error handling and logging')">Add Errors</span>
+      <span class="ai-chip" onclick="aiPrompt('Write tests for this code')">Tests</span>
+    </div>
+  </div>
+  <div class="ai-input-row">
+    <textarea class="ai-input" id="ai-input" rows="1"
+      placeholder="Ask anything… (Enter to send, Shift+Enter new line)"
+      onkeydown="handleAIInput(event)" oninput="autoResize(this)"></textarea>
+    <button class="ai-send" onclick="sendAI()" title="Send">
+      <i data-lucide="arrow-up"></i>
+    </button>
+  </div>
+</div>
+
+<!-- API KEY MODAL -->
+<div class="modal-overlay" id="key-modal">
+  <div class="modal">
+    <div class="modal-title">API Key Setup</div>
+    <div class="provider-tabs">
+      <button class="prov-tab active-claude" id="prov-tab-claude" onclick="switchKeyProvider('claude')">
+        <i data-lucide="sparkles"></i>Claude
+      </button>
+      <button class="prov-tab" id="prov-tab-deepseek" onclick="switchKeyProvider('deepseek')">
+        <i data-lucide="bot"></i>DeepSeek
+      </button>
+    </div>
+    <div class="modal-sub" id="key-modal-sub">Anthropic API key দিয়ে Claude চালান। Key শুধু এই session-এ থাকবে।</div>
+    <input class="modal-input" id="key-input" type="password" placeholder="sk-ant-api03-..." oninput="validateKeyInput()">
+    <div style="font-size:11px;color:var(--text3);margin-bottom:14px;font-family:'Inter',sans-serif" id="key-link-div">
+      Key নিন: <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--blue)">console.anthropic.com</a>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="modal-btn" onclick="closeKeyModal()">Cancel</button>
+      <button class="modal-btn confirm" id="key-save-btn" onclick="saveApiKey()">Save &amp; Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div class="notif-container" id="notif-container"></div>
+
+<!-- COMMAND PALETTE -->
+<div class="cmd-overlay" id="cmd-overlay" onclick="closeCmdPalette(event)">
+  <div class="cmd-box">
+    <input class="cmd-input" id="cmd-input" placeholder="Search files, commands, actions..."
+      oninput="filterCmd(this.value)" onkeydown="handleCmdKey(event)" autocomplete="off">
+    <div class="cmd-results" id="cmd-results"></div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div class="ctx-menu" id="ctx-menu">
+  <div class="ctx-label" id="ctx-filename"></div>
+  <div class="ctx-item" onclick="ctxAction('open')">
+    <i data-lucide="folder-open"></i>Open File
+  </div>
+  <div class="ctx-item" onclick="ctxAction('rename')">
+    <i data-lucide="pencil"></i>Rename
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxAction('copy-path')">
+    <i data-lucide="copy"></i>Copy Path
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="ctxAction('delete')">
+    <i data-lucide="trash-2"></i>Delete
+  </div>
+</div>
+
+<!-- NEW FILE MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">New File</div>
+    <div class="modal-sub">Quick templates — click to fill:</div>
+    <div class="modal-templates">
+      <span class="modal-tpl" onclick="setTpl('app.py')"><i data-lucide="file-code-2"></i>Flask app</span>
+      <span class="modal-tpl" onclick="setTpl('index.html')"><i data-lucide="globe"></i>HTML page</span>
+      <span class="modal-tpl" onclick="setTpl('main.js')"><i data-lucide="file-code-2"></i>JS module</span>
+      <span class="modal-tpl" onclick="setTpl('style.css')"><i data-lucide="palette"></i>CSS file</span>
+      <span class="modal-tpl" onclick="setTpl('README.md')"><i data-lucide="file-text"></i>README</span>
+    </div>
+    <input class="modal-input" id="new-file-input" type="text" placeholder="filename.py"
+      onkeydown="if(event.key==='Enter')createNewFile()">
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="createNewFile()">Create</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="app.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>
