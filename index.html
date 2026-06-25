@@ -92,6 +92,11 @@
       <!-- Git Tab -->
       <div id="tab-git" style="display:none">
         <div class="git-panel">
+          <div id="gh-status-row" style="margin-bottom:10px">
+            <button class="git-btn" onclick="openGithubModal()" id="gh-connect-btn">
+              <i data-lucide="github"></i>Connect GitHub
+            </button>
+          </div>
           <div style="font-size:10px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;font-family:'Inter',sans-serif;font-weight:600">Changes</div>
           <div id="git-changes-list">
             <div style="color:var(--text3);font-size:11px;font-family:'Inter',sans-serif;padding:8px 4px">No changes</div>
@@ -101,16 +106,13 @@
               style="width:100%;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Inter',sans-serif;font-size:11px;outline:none;margin-bottom:6px;transition:border-color 0.15s"
               onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
             <button class="git-btn primary" onclick="gitCommit()">
-              <i data-lucide="check"></i>Commit
-            </button>
-            <button class="git-btn" onclick="gitAction('push')">
-              <i data-lucide="arrow-up-from-line"></i>Push to GitHub
+              <i data-lucide="check"></i>Commit &amp; Push (Real)
             </button>
             <button class="git-btn" onclick="gitAction('pull')">
-              <i data-lucide="arrow-down-from-line"></i>Pull
+              <i data-lucide="arrow-down-from-line"></i>Pull (Real)
             </button>
             <button class="git-btn" onclick="gitAction('branch')">
-              <i data-lucide="git-branch"></i>New Branch
+              <i data-lucide="git-branch"></i>New Branch (Real)
             </button>
           </div>
         </div>
@@ -263,25 +265,28 @@
 
         <!-- Deploy Panel -->
         <div id="panel-deploy-panel" class="deploy-panel" style="display:none">
+          <div style="grid-column:1/-1;font-size:11px;color:var(--text3);font-family:'Inter',sans-serif;padding:0 2px 6px">
+            Connect GitHub first — these open each provider's <b>real</b> deploy page for your actual repo.
+          </div>
           <div class="deploy-card" onclick="deployTo('Render')">
             <div class="d-icon"><i data-lucide="cloud" style="color:#46b3e6"></i></div>
-            <div class="d-info"><div class="d-name">Render</div><div class="d-desc">Free Flask hosting</div></div>
-            <span class="d-status ready">READY</span>
+            <div class="d-info"><div class="d-name">Render</div><div class="d-desc">Static site / web service</div></div>
+            <span class="d-status ready">REAL</span>
+          </div>
+          <div class="deploy-card" onclick="deployTo('Vercel')">
+            <div class="d-icon"><i data-lucide="triangle" style="color:#ffffff"></i></div>
+            <div class="d-info"><div class="d-name">Vercel</div><div class="d-desc">Instant static deploy</div></div>
+            <span class="d-status ready">REAL</span>
+          </div>
+          <div class="deploy-card" onclick="deployTo('Netlify')">
+            <div class="d-icon"><i data-lucide="cloud-upload" style="color:#32e6c4"></i></div>
+            <div class="d-info"><div class="d-name">Netlify</div><div class="d-desc">Static site hosting</div></div>
+            <span class="d-status ready">REAL</span>
           </div>
           <div class="deploy-card" onclick="deployTo('Railway')">
             <div class="d-icon"><i data-lucide="train-front" style="color:#a78bfa"></i></div>
-            <div class="d-info"><div class="d-name">Railway</div><div class="d-desc">Auto-deploy from git</div></div>
-            <span class="d-status live">LIVE</span>
-          </div>
-          <div class="deploy-card" onclick="deployTo('Firebase')">
-            <div class="d-icon"><i data-lucide="flame" style="color:#fb923c"></i></div>
-            <div class="d-info"><div class="d-name">Firebase</div><div class="d-desc">Static + functions</div></div>
-            <span class="d-status ready">READY</span>
-          </div>
-          <div class="deploy-card" onclick="deployTo('VPS')">
-            <div class="d-icon"><i data-lucide="server" style="color:#4ade80"></i></div>
-            <div class="d-info"><div class="d-name">VPS / SSH</div><div class="d-desc">Custom server deploy</div></div>
-            <span class="d-status ready">READY</span>
+            <div class="d-info"><div class="d-name">Railway</div><div class="d-desc">Pick repo manually</div></div>
+            <span class="d-status ready">REAL</span>
           </div>
         </div>
 
@@ -394,6 +399,25 @@
 
 <!-- NOTIFICATIONS -->
 <div class="notif-container" id="notif-container"></div>
+
+<!-- GITHUB CONFIG MODAL (REAL) -->
+<div class="modal-overlay" id="github-modal">
+  <div class="modal">
+    <div class="modal-title">Connect GitHub (Real)</div>
+    <div class="modal-sub">Personal Access Token দিয়ে আসল GitHub repo-তে commit/push/pull হবে। Token শুধু এই browser session-এ memory-তে থাকবে, server-এ save হয় না।</div>
+    <input class="modal-input" id="gh-token-input" type="password" placeholder="ghp_... বা github_pat_...">
+    <input class="modal-input" id="gh-owner-input" type="text" placeholder="GitHub username / org" style="margin-top:8px">
+    <input class="modal-input" id="gh-repo-input" type="text" placeholder="repository name" style="margin-top:8px">
+    <input class="modal-input" id="gh-branch-input" type="text" placeholder="branch (default: main)" style="margin-top:8px">
+    <div style="font-size:11px;color:var(--text3);margin:10px 0 14px;font-family:'Inter',sans-serif">
+      Token বানান (scope: <code>repo</code>): <a href="https://github.com/settings/tokens/new?scopes=repo&description=Exomnia%20DevKit" target="_blank" style="color:var(--blue)">github.com/settings/tokens/new</a>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="modal-btn" onclick="closeGithubModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="saveGithubConfig()">Connect</button>
+    </div>
+  </div>
+</div>
 
 <!-- COMMAND PALETTE -->
 <div class="cmd-overlay" id="cmd-overlay" onclick="closeCmdPalette(event)">
