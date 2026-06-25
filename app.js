@@ -991,6 +991,22 @@ async function sendAI() {
   const input = document.getElementById('ai-input');
   const msg = input.value.trim();
   if (!msg) return;
+
+  // ── Key guard ──
+  const activeKey = selectedProvider === 'claude' ? userApiKey : userDeepseekKey;
+  if (!activeKey) {
+    input.value = '';
+    autoResize(input);
+    const messages = document.getElementById('ai-messages');
+    const errWrap = document.createElement('div');
+    errWrap.className = 'ai-msg-wrap bot';
+    const provName = selectedProvider === 'claude' ? 'Claude (Anthropic)' : 'DeepSeek';
+    errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--accent3)">🔑 ${provName} API key দেওয়া নেই।<br><span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">Key সেট করুন</span></div>`;
+    messages.appendChild(errWrap);
+    messages.scrollTop = messages.scrollHeight;
+    return;
+  }
+
   input.value = '';
   autoResize(input);
 
@@ -1012,44 +1028,84 @@ async function sendAI() {
   // Add to history
   aiHistory.push({ role: 'user', content: msg });
 
+  const currentCode = files[activeFile] || '';
+  const systemPrompt = `You are the AI coding assistant inside Exomnia DevKit, a mobile-first developer environment. Help the user concisely and practically. Current file: ${activeFile}\n\nFile content (first 1000 chars):\n${currentCode.slice(0, 1000)}\n\nRespond in a mix of English and Bengali when appropriate. Keep answers focused and actionable. Use \`backticks\` for code.`;
+
   try {
-    const currentCode = files[activeFile] || '';
-    const systemPrompt = `You are the AI coding assistant inside Exomnia DevKit, a mobile-first developer environment. Help the user concisely and practically. Current file: ${activeFile}\n\nFile content (first 1000 chars):\n${currentCode.slice(0, 1000)}\n\nRespond in a mix of English and Bengali when appropriate. Keep answers focused and actionable. Use \`backticks\` for code.`;
+    let text = '';
 
-    // Build headers — if userApiKey set use it, else rely on Claude.ai injection
-    const hdrs = { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' };
-    if (userApiKey) hdrs['x-api-key'] = userApiKey;
+    if (selectedProvider === 'deepseek') {
+      // ── DeepSeek API (OpenAI-compatible) ──
+      const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userDeepseekKey}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          max_tokens: 1000,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...aiHistory
+          ]
+        })
+      });
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: hdrs,
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: aiHistory
-      })
-    });
+      const data = await resp.json();
+      thinkDiv.remove();
 
-    const data = await resp.json();
-    thinkDiv.remove();
-
-    // Check for API error (wrong key, quota etc.)
-    if (data.error) {
-      const errWrap = document.createElement('div');
-      errWrap.className = 'ai-msg-wrap bot';
-      if (data.error.type === 'authentication_error') {
-        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">🔑 API Key ভুল বা মেয়াদ শেষ। <span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">Key আপডেট করুন</span></div>`;
-      } else {
-        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ Error: ${data.error.message}</div>`;
+      if (data.error) {
+        const errWrap = document.createElement('div');
+        errWrap.className = 'ai-msg-wrap bot';
+        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ DeepSeek Error: ${data.error.message || 'Unknown error'}<br><span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">Key চেক করুন</span></div>`;
+        messages.appendChild(errWrap);
+        aiHistory.pop();
+        messages.scrollTop = messages.scrollHeight;
+        return;
       }
-      messages.appendChild(errWrap);
-      aiHistory.pop();
-      messages.scrollTop = messages.scrollHeight;
-      return;
-    }
 
-    const text = data.content?.[0]?.text || 'দুঃখিত, response পাওয়া যায়নি।';
+      text = data.choices?.[0]?.message?.content || 'দুঃখিত, response পাওয়া যায়নি।';
+
+    } else {
+      // ── Claude / Anthropic API ──
+      const hdrs = {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'x-api-key': userApiKey
+      };
+
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: hdrs,
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: aiHistory
+        })
+      });
+
+      const data = await resp.json();
+      thinkDiv.remove();
+
+      if (data.error) {
+        const errWrap = document.createElement('div');
+        errWrap.className = 'ai-msg-wrap bot';
+        if (data.error.type === 'authentication_error') {
+          errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">🔑 Claude API Key ভুল বা মেয়াদ শেষ। <span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">Key আপডেট করুন</span></div>`;
+        } else {
+          errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ Claude Error: ${data.error.message}</div>`;
+        }
+        messages.appendChild(errWrap);
+        aiHistory.pop();
+        messages.scrollTop = messages.scrollHeight;
+        return;
+      }
+
+      text = data.content?.[0]?.text || 'দুঃখিত, response পাওয়া যায়নি।';
+    }
 
     // Add assistant response to history
     aiHistory.push({ role: 'assistant', content: text });
@@ -1066,7 +1122,6 @@ async function sendAI() {
         <button class="ai-act-btn" onclick="copyAIMsg(this)"><i data-lucide="copy" style="width:11px;height:11px"></i>Copy</button>
         <button class="ai-act-btn" onclick="insertToEditor(this)"><i data-lucide="corner-down-left" style="width:11px;height:11px"></i>Insert</button>
       </div>`;
-    // Store raw text for copy/insert
     botWrap.dataset.raw = text;
     messages.appendChild(botWrap);
     refreshIcons();
@@ -1075,13 +1130,7 @@ async function sendAI() {
     thinkDiv.remove();
     const errWrap = document.createElement('div');
     errWrap.className = 'ai-msg-wrap bot';
-    // CORS error = standalone mode, needs API key
-    const isCors = err.message?.includes('fetch') || err.name === 'TypeError';
-    if (isCors && !userApiKey) {
-      errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--accent3)">📱 Mobile/Standalone mode detected!<br><br>AI চালাতে API key দরকার।<br><span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">🔑 Key সেট করুন</span></div>`;
-    } else {
-      errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ AI সংযোগে সমস্যা। আবার চেষ্টা করুন।</div>`;
-    }
+    errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ Network error: ${err.message}<br>Connection বা Key চেক করুন।</div>`;
     messages.appendChild(errWrap);
     aiHistory.pop();
   }
