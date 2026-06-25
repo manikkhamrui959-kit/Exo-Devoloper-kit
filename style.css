@@ -676,3 +676,8 @@ iframe.preview-frame{flex:1;border:none;background:white;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 ::-webkit-scrollbar-thumb:hover{background:var(--text3);}
+
+/* ── EDITOR EMPTY / ACTIVE STATE ── */
+.editor-pane { display: flex; }
+#editor-empty { flex: 1; }
+#editor-active { flex: 1; }
