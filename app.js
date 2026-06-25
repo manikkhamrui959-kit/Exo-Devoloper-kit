@@ -785,47 +785,49 @@ function scrollTerminal() {
   setTimeout(() => body.scrollTop = body.scrollHeight, 50);
 }
 
-function processCommand(cmd) {
+async function processCommand(cmd) {
   const lower = cmd.toLowerCase().trim();
+
+  // Local-only commands
   if (termCommands[lower]) { termCommands[lower](); return; }
-  if (lower.startsWith('pip install ')) {
-    const pkg = cmd.slice(12).trim();
-    addTermOutput(`Collecting ${pkg}...`, 'info');
-    setTimeout(() => addTermOutput(`✓ Successfully installed ${pkg}`, 'success'), 800);
-    return;
+
+  // Send to real backend terminal
+  addTermOutput('Running...', 'info');
+  try {
+    const res = await fetch('/terminal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cmd, files })
+    });
+    const data = await res.json();
+    const lines = (data.output || '').split('\n');
+    lines.forEach(line => { if (line !== '') addTermOutput(line, data.error ? 'err' : 'out'); });
+  } catch (e) {
+    addTermOutput('Network error: could not reach server', 'err');
   }
-  if (lower.startsWith('npm install')) {
-    addTermOutput('npm: fetching packages...', 'info');
-    setTimeout(() => addTermOutput('✓ added packages in 2.1s', 'success'), 800);
-    return;
-  }
-  if (lower === 'python app.py' || lower === 'flask run') {
-    addTermOutput(' * Serving Flask app "app"', 'info');
-    addTermOutput(' * Debug mode: on', 'info');
-    setTimeout(() => { addTermOutput(' * Running on http://127.0.0.1:5000', 'success'); showPreview(); }, 600);
-    return;
-  }
-  if (lower.startsWith('git ')) {
-    const sub = lower.slice(4);
-    if (sub === 'status') addTermOutput('On branch main\nModified: app.py\nNew file: main.js', 'out');
-    else if (sub.startsWith('commit')) addTermOutput('[main a3f8c2d] ' + (cmd.match(/"(.+)"/) || ['','Update'])[1], 'success');
-    else if (sub === 'push') { addTermOutput('Pushing to origin/main...', 'info'); setTimeout(() => addTermOutput('✓ Branch main pushed to GitHub', 'success'), 700); }
-    else if (sub === 'pull') { addTermOutput('Pulling from origin/main...', 'info'); setTimeout(() => addTermOutput('✓ Already up to date.', 'success'), 500); }
-    else addTermOutput(`git: '${sub}' executed`, 'out');
-    return;
-  }
-  if (lower.startsWith('node ')) {
-    addTermOutput('Running ' + cmd.slice(5) + '...', 'info');
-    setTimeout(() => addTermOutput('Server started on port 3000', 'success'), 400);
-    return;
-  }
-  addTermOutput(`bash: ${cmd}: command not found`, 'err');
 }
 
-function runCode() {
+async function runCode() {
+  if (!activeFile) { notify('No file open', 'error'); return; }
+  const code = files[activeFile] || '';
+  const ext = activeFile.split('.').pop().toLowerCase();
   switchPanel('terminal', document.getElementById('ptab-terminal'));
-  addTermLine('python app.py');
-  processCommand('python app.py');
+  addTermLine(`run ${activeFile}`);
+  addTermOutput('Executing...', 'info');
+  try {
+    const res = await fetch('/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, lang: ext, filename: activeFile })
+    });
+    const data = await res.json();
+    if (data.preview) { showPreview(); addTermOutput(data.output, 'info'); return; }
+    const lines = (data.output || '').split('\n');
+    lines.forEach(line => { if (line !== '') addTermOutput(line, data.error ? 'err' : 'out'); });
+    if (!data.error) notify(`✓ ${activeFile} ran successfully`, 'success');
+  } catch (e) {
+    addTermOutput('Network error: could not reach server', 'err');
+  }
 }
 
 function showPreview() {
