@@ -25,8 +25,8 @@ let termHistIdx = -1;
 let aiOpen = false;
 let aiHistory = [];
 let userApiKey = '';
-let userDeepseekKey = '';
-let selectedProvider = 'claude';
+let userDeepseekKey = 'sk-d4813c9679ca45ec814e1d4949249ff2';
+let selectedProvider = 'deepseek';
 let keyModalProvider = 'claude';
 let cursorLine = 1;
 let wordWrap = false;
@@ -991,22 +991,6 @@ async function sendAI() {
   const input = document.getElementById('ai-input');
   const msg = input.value.trim();
   if (!msg) return;
-
-  // ── Key guard ──
-  const activeKey = selectedProvider === 'claude' ? userApiKey : userDeepseekKey;
-  if (!activeKey) {
-    input.value = '';
-    autoResize(input);
-    const messages = document.getElementById('ai-messages');
-    const errWrap = document.createElement('div');
-    errWrap.className = 'ai-msg-wrap bot';
-    const provName = selectedProvider === 'claude' ? 'Claude (Anthropic)' : 'DeepSeek';
-    errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--accent3)">🔑 ${provName} API key দেওয়া নেই।<br><span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">Key সেট করুন</span></div>`;
-    messages.appendChild(errWrap);
-    messages.scrollTop = messages.scrollHeight;
-    return;
-  }
-
   input.value = '';
   autoResize(input);
 
@@ -1025,7 +1009,6 @@ async function sendAI() {
   messages.appendChild(thinkDiv);
   messages.scrollTop = messages.scrollHeight;
 
-  // Add to history
   aiHistory.push({ role: 'user', content: msg });
 
   const currentCode = files[activeFile] || '';
@@ -1035,7 +1018,6 @@ async function sendAI() {
     let text = '';
 
     if (selectedProvider === 'deepseek') {
-      // ── DeepSeek API (OpenAI-compatible) ──
       const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -1051,34 +1033,28 @@ async function sendAI() {
           ]
         })
       });
-
       const data = await resp.json();
       thinkDiv.remove();
-
       if (data.error) {
         const errWrap = document.createElement('div');
         errWrap.className = 'ai-msg-wrap bot';
-        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ DeepSeek Error: ${data.error.message || 'Unknown error'}<br><span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">Key চেক করুন</span></div>`;
+        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ DeepSeek Error: ${data.error.message || 'Unknown error'}</div>`;
         messages.appendChild(errWrap);
         aiHistory.pop();
         messages.scrollTop = messages.scrollHeight;
         return;
       }
-
       text = data.choices?.[0]?.message?.content || 'দুঃখিত, response পাওয়া যায়নি।';
 
     } else {
-      // ── Claude / Anthropic API ──
-      const hdrs = {
-        'Content-Type': 'application/json',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-        'x-api-key': userApiKey
-      };
-
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: hdrs,
+        headers: {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+          'x-api-key': userApiKey
+        },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 1000,
@@ -1086,31 +1062,22 @@ async function sendAI() {
           messages: aiHistory
         })
       });
-
       const data = await resp.json();
       thinkDiv.remove();
-
       if (data.error) {
         const errWrap = document.createElement('div');
         errWrap.className = 'ai-msg-wrap bot';
-        if (data.error.type === 'authentication_error') {
-          errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">🔑 Claude API Key ভুল বা মেয়াদ শেষ। <span style="color:var(--blue);cursor:pointer;text-decoration:underline" onclick="openKeyModal()">Key আপডেট করুন</span></div>`;
-        } else {
-          errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ Claude Error: ${data.error.message}</div>`;
-        }
+        errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ Claude Error: ${data.error.message}</div>`;
         messages.appendChild(errWrap);
         aiHistory.pop();
         messages.scrollTop = messages.scrollHeight;
         return;
       }
-
       text = data.content?.[0]?.text || 'দুঃখিত, response পাওয়া যায়নি।';
     }
 
-    // Add assistant response to history
     aiHistory.push({ role: 'assistant', content: text });
 
-    // Render bot message
     const botWrap = document.createElement('div');
     botWrap.className = 'ai-msg-wrap bot';
     const rendered = text
@@ -1130,7 +1097,7 @@ async function sendAI() {
     thinkDiv.remove();
     const errWrap = document.createElement('div');
     errWrap.className = 'ai-msg-wrap bot';
-    errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ Network error: ${err.message}<br>Connection বা Key চেক করুন।</div>`;
+    errWrap.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ Connection error: ${err.message}</div>`;
     messages.appendChild(errWrap);
     aiHistory.pop();
   }
@@ -1157,15 +1124,8 @@ function switchProvider(p) {
 function updateKeyBtn() {
   const keyBtn = document.getElementById('key-btn');
   if (!keyBtn) return;
-  const hasKey = selectedProvider === 'claude' ? !!userApiKey : !!userDeepseekKey;
-  if (hasKey) {
-    keyBtn.className = 'ai-clear connected';
-    keyBtn.innerHTML = '<i data-lucide="check-circle-2" style="width:11px;height:11px"></i>Connected';
-  } else {
-    keyBtn.className = 'ai-clear key-btn';
-    keyBtn.innerHTML = '<i data-lucide="key" style="width:11px;height:11px"></i>Add Key';
-  }
-  refreshIcons();
+  // Key is managed internally — hide button from users
+  keyBtn.style.display = 'none';
 }
 
 // ═══════════════════════════════════════════════
