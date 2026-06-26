@@ -914,7 +914,7 @@ function initSplitResize() {
   // Mouse drag
   handle.addEventListener('mousedown', e => {
     e.preventDefault();
-    const pane = document.getElementById('editor-pane');
+    const pane = document.getElementById('editor-left-col');
     const preview = document.getElementById('split-preview');
     const startX = e.clientX;
     const startW = pane.offsetWidth;
@@ -938,7 +938,7 @@ function initSplitResize() {
 
   // Touch drag (mobile)
   handle.addEventListener('touchstart', e => {
-    const pane = document.getElementById('editor-pane');
+    const pane = document.getElementById('editor-left-col');
     const preview = document.getElementById('split-preview');
     const startX = e.touches[0].clientX;
     const startW = pane.offsetWidth;
