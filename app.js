@@ -890,20 +890,27 @@ function toggleSplitView() {
 
 function updateSplitPreview() {
   const frame = document.getElementById('split-preview-frame');
+  const emptyMsg = document.getElementById('split-preview-empty');
   if (!frame) return;
+
   let htmlContent = null;
   const activeExt = (activeFile || '').split('.').pop().toLowerCase();
   if (activeExt === 'html') {
     htmlContent = files[activeFile];
   } else {
-    // If active file is CSS/JS, find the HTML file and inject updated content
     const htmlFile = Object.keys(files).find(f => f.toLowerCase().endsWith('.html'));
     if (htmlFile) htmlContent = files[htmlFile];
   }
-  if (htmlContent) {
+
+  // Only show iframe if there's real content (non-empty)
+  const hasContent = htmlContent && htmlContent.trim().length > 0;
+  if (hasContent) {
+    frame.style.display = 'block';
+    if (emptyMsg) emptyMsg.style.display = 'none';
     frame.srcdoc = htmlContent;
   } else {
-    frame.srcdoc = '<div style="font-family:Inter,sans-serif;padding:30px;color:#aaa;text-align:center"><div style="font-size:40px;margin-bottom:12px">📄</div><div>HTML ফাইল খুলুন অথবা তৈরি করুন</div></div>';
+    frame.style.display = 'none';
+    if (emptyMsg) emptyMsg.style.display = 'flex';
   }
 }
 
