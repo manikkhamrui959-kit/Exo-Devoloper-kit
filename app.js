@@ -9,7 +9,8 @@ const fileTemplates = {
   'index.html': `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>My App</title>\n</head>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>`,
   'main.js': `// Main JavaScript\n\ndocument.addEventListener('DOMContentLoaded', () => {
   splitViewActive = true;
-  initSplitResize();\n  console.log('App ready');\n});\n`,
+  initSplitResize();
+  setTimeout(updateSplitPreview, 500);\n  console.log('App ready');\n});\n`,
   'style.css': `/* Styles */\n* { margin: 0; padding: 0; box-sizing: border-box; }\n\nbody {\n  font-family: sans-serif;\n}\n`,
   'README.md': `# Project Name\n\n## Setup\n\n\`\`\`bash\n# Install dependencies\nnpm install\n\`\`\`\n\n## Usage\n\nDescribe how to use your project here.\n`
 };
@@ -392,6 +393,7 @@ function switchTab(filename) {
   const treeItem = document.querySelector(`[data-file="${filename}"]`);
   if (treeItem) treeItem.classList.add('active');
   loadFile(filename);
+  updateSplitPreview();
 }
 
 function openFile(filename) {
@@ -887,7 +889,6 @@ function toggleSplitView() {
 }
 
 function updateSplitPreview() {
-  if (!splitViewActive) return;
   const frame = document.getElementById('split-preview-frame');
   if (!frame) return;
   let htmlContent = null;
@@ -895,10 +896,15 @@ function updateSplitPreview() {
   if (activeExt === 'html') {
     htmlContent = files[activeFile];
   } else {
+    // If active file is CSS/JS, find the HTML file and inject updated content
     const htmlFile = Object.keys(files).find(f => f.toLowerCase().endsWith('.html'));
     if (htmlFile) htmlContent = files[htmlFile];
   }
-  frame.srcdoc = htmlContent || '<div style="font-family:sans-serif;padding:20px;color:#888">No HTML file found</div>';
+  if (htmlContent) {
+    frame.srcdoc = htmlContent;
+  } else {
+    frame.srcdoc = '<div style="font-family:Inter,sans-serif;padding:30px;color:#aaa;text-align:center"><div style="font-size:40px;margin-bottom:12px">📄</div><div>HTML ফাইল খুলুন অথবা তৈরি করুন</div></div>';
+  }
 }
 
 function refreshSplitPreview() {
