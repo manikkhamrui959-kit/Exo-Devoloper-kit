@@ -681,3 +681,40 @@ iframe.preview-frame{flex:1;border:none;background:white;}
 .editor-pane { display: flex; }
 #editor-empty { flex: 1; }
 #editor-active { flex: 1; }
+
+
+/* ── SPLIT VIEW ── */
+.editor-area.split-view { flex-direction: row !important; }
+.editor-area.split-view #editor-pane { flex: 1; min-width: 200px; }
+.editor-area.split-view #panel-resize,
+.editor-area.split-view #bottom-panel { display: none !important; }
+
+.split-v-resize {
+  width: 4px;
+  cursor: col-resize;
+  flex-shrink: 0;
+  background: var(--border);
+  opacity: 0.4;
+  transition: opacity 0.15s, background 0.15s;
+  z-index: 10;
+}
+.split-v-resize:hover, .split-v-resize.dragging { opacity: 1; background: var(--accent); }
+
+.split-preview {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  min-width: 180px;
+  flex: 1;
+  overflow: hidden;
+}
+.split-preview-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  height: 30px;
+}
