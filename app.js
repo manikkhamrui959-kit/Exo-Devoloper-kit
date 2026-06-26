@@ -889,7 +889,9 @@ function toggleSplitView() {
 }
 
 function updateSplitPreview() {
-  const frame = document.getElementById('split-preview-frame');
+  const frame    = document.getElementById('split-preview-frame');
+  const pane     = document.getElementById('split-preview');
+  const resizer  = document.getElementById('split-v-resize');
   const emptyMsg = document.getElementById('split-preview-empty');
   if (!frame) return;
 
@@ -902,15 +904,19 @@ function updateSplitPreview() {
     if (htmlFile) htmlContent = files[htmlFile];
   }
 
-  // Only show iframe if there's real content (non-empty)
   const hasContent = htmlContent && htmlContent.trim().length > 0;
+
   if (hasContent) {
-    frame.style.display = 'block';
+    // Show preview pane + resizer
+    if (pane)    pane.style.display    = 'flex';
+    if (resizer) resizer.style.display = 'block';
     if (emptyMsg) emptyMsg.style.display = 'none';
+    frame.style.display = 'block';
     frame.srcdoc = htmlContent;
   } else {
-    frame.style.display = 'none';
-    if (emptyMsg) emptyMsg.style.display = 'flex';
+    // Hide preview pane + resizer completely
+    if (pane)    pane.style.display    = 'none';
+    if (resizer) resizer.style.display = 'none';
   }
 }
 
