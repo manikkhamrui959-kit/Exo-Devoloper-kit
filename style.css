@@ -196,7 +196,7 @@ body{
 .git-btn.primary:hover{background:#00b894;}
 
 /* ── EDITOR AREA ── */
-.editor-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
+.editor-area{flex:1;display:flex;flex-direction:row;overflow:hidden;background:var(--bg);}
 
 /* ── TABS ── */
 .tabs-bar{
@@ -683,67 +683,53 @@ iframe.preview-frame{flex:1;border:none;background:white;}
 #editor-active { flex: 1; }
 
 
-/* ── SPLIT VIEW (always on) ── */
-.editor-area {
-  flex-direction: row !important;
-}
+/* ── SPLIT VIEW ── */
 
-/* Editor gets 50%, Preview gets 50% — equal split */
-.editor-area #editor-pane {
+/* editor-area is now a row */
+.editor-area { flex-direction: row !important; }
+
+/* Hide bottom panel */
+#panel-resize,
+#bottom-panel { display: none !important; }
+
+/* Left column: tabs + toolbar + code — takes 50% */
+.editor-left-col {
   flex: 0 0 50%;
   width: 50%;
-  min-width: 160px;
-  max-width: 75%;
+  min-width: 150px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-#panel-resize,
-#bottom-panel {
-  display: none !important;
+/* editor-pane inside left-col fills remaining height */
+#editor-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-/* Vertical drag handle between editor and preview */
+/* Drag handle */
 .split-v-resize {
   width: 5px;
-  cursor: col-resize;
   flex-shrink: 0;
+  cursor: col-resize;
   background: var(--border);
   transition: background 0.15s;
   z-index: 10;
-  position: relative;
-}
-.split-v-resize::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 1px;
-  height: 30px;
-  background: var(--text3);
-  border-radius: 2px;
-  opacity: 0.5;
 }
 .split-v-resize:hover,
-.split-v-resize.dragging {
-  background: var(--accent);
-}
-.split-v-resize:hover::after,
-.split-v-resize.dragging::after {
-  opacity: 0;
-}
+.split-v-resize.dragging { background: var(--accent); }
 
-/* Preview pane */
+/* Right: live preview */
 .split-preview {
+  flex: 1 !important;
   display: flex !important;
   flex-direction: column;
-  flex: 1;
-  min-width: 160px;
+  min-width: 150px;
   overflow: hidden;
   background: #fff;
-  border-left: 1px solid var(--border);
 }
 
 .split-preview-bar {
@@ -761,6 +747,5 @@ iframe.preview-frame{flex:1;border:none;background:white;}
   flex: 1;
   border: none;
   width: 100%;
-  height: 100%;
   background: #fff;
 }
