@@ -7,7 +7,9 @@ const files = {};
 const fileTemplates = {
   'app.py': `from flask import Flask, jsonify, request\nfrom flask_cors import CORS\n\napp = Flask(__name__)\nCORS(app)\n\n@app.route('/')\ndef index():\n    return jsonify({'status': 'ok'})\n\nif __name__ == '__main__':\n    app.run(debug=True)`,
   'index.html': `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>My App</title>\n</head>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>`,
-  'main.js': `// Main JavaScript\n\ndocument.addEventListener('DOMContentLoaded', () => {\n  console.log('App ready');\n});\n`,
+  'main.js': `// Main JavaScript\n\ndocument.addEventListener('DOMContentLoaded', () => {
+  splitViewActive = true;
+  initSplitResize();\n  console.log('App ready');\n});\n`,
   'style.css': `/* Styles */\n* { margin: 0; padding: 0; box-sizing: border-box; }\n\nbody {\n  font-family: sans-serif;\n}\n`,
   'README.md': `# Project Name\n\n## Setup\n\n\`\`\`bash\n# Install dependencies\nnpm install\n\`\`\`\n\n## Usage\n\nDescribe how to use your project here.\n`
 };
@@ -836,6 +838,7 @@ async function runCode() {
 }
 
 function showPreview() {
+  updateSplitPreview();
   const placeholder = document.getElementById('preview-placeholder');
   const frame = document.getElementById('preview-frame');
   if (placeholder) placeholder.style.display = 'none';
