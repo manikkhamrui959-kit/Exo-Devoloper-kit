@@ -910,23 +910,22 @@ function initSplitResize() {
   const handle = document.getElementById('split-v-resize');
   if (handle._init) return;
   handle._init = true;
-  let startX, startLeft, startRight;
+
+  // Mouse drag
   handle.addEventListener('mousedown', e => {
     e.preventDefault();
-    const area = document.querySelector('.editor-area');
     const pane = document.getElementById('editor-pane');
     const preview = document.getElementById('split-preview');
-    startX = e.clientX;
-    startLeft = pane.offsetWidth;
-    startRight = preview.offsetWidth;
+    const startX = e.clientX;
+    const startW = pane.offsetWidth;
+    const totalW = pane.offsetWidth + preview.offsetWidth;
     handle.classList.add('dragging');
     const onMove = ev => {
       const dx = ev.clientX - startX;
-      const total = startLeft + startRight;
-      const newLeft = Math.max(150, Math.min(total - 150, startLeft + dx));
+      const newW = Math.max(160, Math.min(totalW - 160, startW + dx));
       pane.style.flex = 'none';
-      pane.style.width = newLeft + 'px';
-      preview.style.flex = '1';
+      pane.style.width = newW + 'px';
+      pane.style.maxWidth = '';
     };
     const onUp = () => {
       handle.classList.remove('dragging');
@@ -936,6 +935,30 @@ function initSplitResize() {
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   });
+
+  // Touch drag (mobile)
+  handle.addEventListener('touchstart', e => {
+    const pane = document.getElementById('editor-pane');
+    const preview = document.getElementById('split-preview');
+    const startX = e.touches[0].clientX;
+    const startW = pane.offsetWidth;
+    const totalW = pane.offsetWidth + preview.offsetWidth;
+    handle.classList.add('dragging');
+    const onMove = ev => {
+      const dx = ev.touches[0].clientX - startX;
+      const newW = Math.max(160, Math.min(totalW - 160, startW + dx));
+      pane.style.flex = 'none';
+      pane.style.width = newW + 'px';
+      pane.style.maxWidth = '';
+    };
+    const onUp = () => {
+      handle.classList.remove('dragging');
+      handle.removeEventListener('touchmove', onMove);
+      handle.removeEventListener('touchend', onUp);
+    };
+    handle.addEventListener('touchmove', onMove, { passive: true });
+    handle.addEventListener('touchend', onUp);
+  }, { passive: true });
 }
 
 // ═══════════════════════════════════════════════
