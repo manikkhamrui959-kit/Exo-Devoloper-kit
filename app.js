@@ -996,13 +996,11 @@ async function sendAI() {
 
   const messages = document.getElementById('ai-messages');
 
-  // User message
   const userWrap = document.createElement('div');
   userWrap.className = 'ai-msg-wrap user';
   userWrap.innerHTML = `<div class="ai-msg user">${msg.replace(/</g,'&lt;')}</div>`;
   messages.appendChild(userWrap);
 
-  // Thinking indicator
   const thinkDiv = document.createElement('div');
   thinkDiv.className = 'ai-thinking';
   thinkDiv.innerHTML = '<div class="thinking-dot"></div><div class="thinking-dot"></div><div class="thinking-dot"></div>';
@@ -1123,9 +1121,7 @@ function switchProvider(p) {
 
 function updateKeyBtn() {
   const keyBtn = document.getElementById('key-btn');
-  if (!keyBtn) return;
-  // Key is managed internally — hide button from users
-  keyBtn.style.display = 'none';
+  if (keyBtn) keyBtn.style.display = 'none';
 }
 
 // ═══════════════════════════════════════════════
@@ -1290,4 +1286,3 @@ window.addEventListener('load', () => {
 
   refreshIcons();
 });
-
