@@ -749,3 +749,28 @@ iframe.preview-frame{flex:1;border:none;background:white;}
   width: 100%;
   background: #fff;
 }
+
+/* ── WELCOME SCREEN ── */
+.welcome-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.welcome-btn:hover {
+  border-color: var(--accent);
+  background: var(--surface2);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
