@@ -981,6 +981,50 @@ function initSplitResize() {
 }
 
 // ═══════════════════════════════════════════════
+// WELCOME SCREEN
+// ═══════════════════════════════════════════════
+function hideWelcomeScreen() {
+  const ws = document.getElementById('welcome-screen');
+  if (ws) ws.style.display = 'none';
+}
+
+const QUICK_TEMPLATES = {
+  'index.html': `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Page</title>
+</head>
+<body>
+  <h1>Hello, World!</h1>
+</body>
+</html>`,
+  'style.css': `/* Styles */
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #f5f5f5;
+}`,
+  'script.js': `// JavaScript
+console.log('Hello, World!');`,
+  'app.py': `# Python
+print("Hello, World!")`
+};
+
+function quickCreate(filename) {
+  hideWelcomeScreen();
+  if (!files[filename]) {
+    files[filename] = QUICK_TEMPLATES[filename] || '';
+    gitChanges.added.add(filename);
+    updateGitPanel();
+    renderFileTree();
+  }
+  openFile(filename);
+  updateSplitPreview();
+}
+
+// ═══════════════════════════════════════════════
 // GIT ACTIONS
 // ═══════════════════════════════════════════════
 function gitCommit() {
@@ -1053,6 +1097,7 @@ function createNewFile() {
   const baseName = name.split('/').pop();
   const templateContent = fileTemplates[baseName] || fileTemplates[name] || `# ${name}\n`;
   files[name] = templateContent;
+  hideWelcomeScreen();
 
   const treeItem = document.createElement('div');
   treeItem.className = 'tree-item';
@@ -1138,7 +1183,7 @@ async function sendAI() {
   aiHistory.push({ role: 'user', content: msg });
 
   const currentCode = files[activeFile] || '';
-  const systemPrompt = `You are the AI coding assistant inside Exomnia DevKit, a mobile-first developer environment. Help the user concisely and practically. Current file: ${activeFile}\n\nFile content (first 1000 chars):\n${currentCode.slice(0, 1000)}\n\nRespond in a mix of English and Bengali when appropriate. Keep answers focused and actionable. Use \`backticks\` for code.`;
+  const systemPrompt = `You are the AI coding assistant inside Exomnia DevKit, a mobile-first developer environment. Help the user concisely and practically. Current file: ${activeFile}\n\nFile content (first 1000 chars):\n${currentCode.slice(0, 1000)}\n\nRespond in English only. Keep answers focused and actionable. Use \`backticks\` for code.`;
 
   try {
     let text = '';
@@ -1155,7 +1200,7 @@ async function sendAI() {
         e.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ DeepSeek Error: ${data.error.message || 'Unknown'}</div>`;
         messages.appendChild(e); aiHistory.pop(); messages.scrollTop = messages.scrollHeight; return;
       }
-      text = data.choices?.[0]?.message?.content || 'দুঃখিত, response পাওয়া যায়নি।';
+      text = data.choices?.[0]?.message?.content || 'Sorry, no response received.';
     } else {
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -1169,7 +1214,7 @@ async function sendAI() {
         e.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ Claude Error: ${data.error.message}</div>`;
         messages.appendChild(e); aiHistory.pop(); messages.scrollTop = messages.scrollHeight; return;
       }
-      text = data.content?.[0]?.text || 'দুঃখিত, response পাওয়া যায়নি।';
+      text = data.content?.[0]?.text || 'Sorry, no response received.';
     }
     aiHistory.push({ role: 'assistant', content: text });
     const botWrap = document.createElement('div');
