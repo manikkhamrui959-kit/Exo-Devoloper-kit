@@ -8,7 +8,15 @@ const fileTemplates = {
   'app.py': `from flask import Flask, jsonify, request\nfrom flask_cors import CORS\n\napp = Flask(__name__)\nCORS(app)\n\n@app.route('/')\ndef index():\n    return jsonify({'status': 'ok'})\n\nif __name__ == '__main__':\n    app.run(debug=True)`,
   'index.html': `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>My App</title>\n</head>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>`,
   'main.js': `// Main JavaScript\n\ndocument.addEventListener('DOMContentLoaded', () => {
-  initSplitResize();\n  console.log('App ready');\n});\n`,
+  initSplitResize();
+  // Show welcome screen only if no files exist
+  const hasFiles = Object.keys(files).length > 0;
+  if (!hasFiles) {
+    document.getElementById('welcome-screen').style.display = 'flex';
+  } else {
+    document.getElementById('editor-left-col').style.display = 'flex';
+    updateSplitPreview();
+  }\n  console.log('App ready');\n});\n`,
   'style.css': `/* Styles */\n* { margin: 0; padding: 0; box-sizing: border-box; }\n\nbody {\n  font-family: sans-serif;\n}\n`,
   'README.md': `# Project Name\n\n## Setup\n\n\`\`\`bash\n# Install dependencies\nnpm install\n\`\`\`\n\n## Usage\n\nDescribe how to use your project here.\n`
 };
@@ -906,38 +914,7 @@ function updateSplitPreview() {
   if (hasContent) {
     pane.style.display = 'flex';
     if (resizer) resizer.style.display = 'block';
-
-    const nav_blocker = `<script>
-window.addEventListener('DOMContentLoaded', function() {
-  document.body.addEventListener('click', function(e) {
-    var a = e.target.closest('a');
-    if (!a) return;
-    var href = a.getAttribute('href') || '';
-    if (href.startsWith('#')) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    var t = document.getElementById('_exo_toast');
-    if (!t) {
-      t = document.createElement('div');
-      t.id = '_exo_toast';
-      t.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 16px;border-radius:8px;font-size:12px;font-family:sans-serif;z-index:99999;transition:opacity 0.3s;pointer-events:none';
-      document.body.appendChild(t);
-    }
-    t.textContent = 'Navigation blocked in preview';
-    t.style.opacity = '1';
-    clearTimeout(t._t);
-    t._t = setTimeout(function(){ t.style.opacity='0'; }, 2000);
-  }, true);
-});
-<` + `/script>`;
-
-    let injected = htmlContent;
-    if (injected.includes('</body>')) {
-      injected = injected.replace('</body>', nav_blocker + '</body>');
-    } else {
-      injected = injected + nav_blocker;
-    }
-    frame.srcdoc = injected;
+    frame.srcdoc = htmlContent;
   } else {
     pane.style.display = 'none';
     if (resizer) resizer.style.display = 'none';
