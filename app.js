@@ -553,7 +553,7 @@ const cmdCommands = [
   { label: 'New Branch',       icon: 'git-branch',         tag: 'git',                       fn: () => gitAction('branch') },
   { label: 'Focus Terminal',   icon: 'terminal',           tag: 'action', kbd: 'Ctrl+`',     fn: focusTerminal },
   { label: 'Clear Terminal',   icon: 'trash-2',            tag: 'action',                    fn: clearTerminal },
-  { label: 'Run Preview',      icon: 'monitor',            tag: 'action',                    fn: () => { //switchPanel('preview', document.getElementById('ptab-preview')); showPreview(); } },
+  { label: 'Run Preview',      icon: 'monitor',            tag: 'action',                    fn: () => { showPreview(); } },
 ];
 
 function openCmdPalette() {
