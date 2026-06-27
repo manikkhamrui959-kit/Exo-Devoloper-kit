@@ -8,9 +8,7 @@ const fileTemplates = {
   'app.py': `from flask import Flask, jsonify, request\nfrom flask_cors import CORS\n\napp = Flask(__name__)\nCORS(app)\n\n@app.route('/')\ndef index():\n    return jsonify({'status': 'ok'})\n\nif __name__ == '__main__':\n    app.run(debug=True)`,
   'index.html': `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>My App</title>\n</head>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>`,
   'main.js': `// Main JavaScript\n\ndocument.addEventListener('DOMContentLoaded', () => {
-  splitViewActive = true;
-  initSplitResize();
-  setTimeout(updateSplitPreview, 500);\n  console.log('App ready');\n});\n`,
+  initSplitResize();\n  console.log('App ready');\n});\n`,
   'style.css': `/* Styles */\n* { margin: 0; padding: 0; box-sizing: border-box; }\n\nbody {\n  font-family: sans-serif;\n}\n`,
   'README.md': `# Project Name\n\n## Setup\n\n\`\`\`bash\n# Install dependencies\nnpm install\n\`\`\`\n\n## Usage\n\nDescribe how to use your project here.\n`
 };
@@ -555,7 +553,7 @@ const cmdCommands = [
   { label: 'New Branch',       icon: 'git-branch',         tag: 'git',                       fn: () => gitAction('branch') },
   { label: 'Focus Terminal',   icon: 'terminal',           tag: 'action', kbd: 'Ctrl+`',     fn: focusTerminal },
   { label: 'Clear Terminal',   icon: 'trash-2',            tag: 'action',                    fn: clearTerminal },
-  { label: 'Run Preview',      icon: 'monitor',            tag: 'action',                    fn: () => { switchPanel('preview', document.getElementById('ptab-preview')); showPreview(); } },
+  { label: 'Run Preview',      icon: 'monitor',            tag: 'action',                    fn: () => { //switchPanel('preview', document.getElementById('ptab-preview')); showPreview(); } },
 ];
 
 function openCmdPalette() {
@@ -889,11 +887,10 @@ function toggleSplitView() {
 }
 
 function updateSplitPreview() {
-  const frame    = document.getElementById('split-preview-frame');
-  const pane     = document.getElementById('split-preview');
-  const resizer  = document.getElementById('split-v-resize');
-  const emptyMsg = document.getElementById('split-preview-empty');
-  if (!frame) return;
+  const frame   = document.getElementById('split-preview-frame');
+  const pane    = document.getElementById('split-preview');
+  const resizer = document.getElementById('split-v-resize');
+  if (!frame || !pane) return;
 
   let htmlContent = null;
   const activeExt = (activeFile || '').split('.').pop().toLowerCase();
@@ -907,15 +904,11 @@ function updateSplitPreview() {
   const hasContent = htmlContent && htmlContent.trim().length > 0;
 
   if (hasContent) {
-    // Show preview pane + resizer
-    if (pane)    pane.style.display    = 'flex';
+    pane.style.display    = 'flex';
     if (resizer) resizer.style.display = 'block';
-    if (emptyMsg) emptyMsg.style.display = 'none';
-    frame.style.display = 'block';
     frame.srcdoc = htmlContent;
   } else {
-    // Hide preview pane + resizer completely
-    if (pane)    pane.style.display    = 'none';
+    pane.style.display    = 'none';
     if (resizer) resizer.style.display = 'none';
   }
 }
@@ -984,8 +977,10 @@ function initSplitResize() {
 // WELCOME SCREEN
 // ═══════════════════════════════════════════════
 function hideWelcomeScreen() {
-  const ws = document.getElementById('welcome-screen');
-  if (ws) ws.style.display = 'none';
+  const ws  = document.getElementById('welcome-screen');
+  const col = document.getElementById('editor-left-col');
+  if (ws)  { ws.style.display  = 'none'; }
+  if (col) { col.style.display = 'flex'; }
 }
 
 const QUICK_TEMPLATES = {
