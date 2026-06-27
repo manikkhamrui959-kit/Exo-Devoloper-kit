@@ -1013,10 +1013,24 @@ function quickCreate(filename) {
     files[filename] = QUICK_TEMPLATES[filename] || '';
     gitChanges.added.add(filename);
     updateGitPanel();
-    renderFileTree();
+    // Add file to tree
+    const existingItem = document.querySelector(`[data-file="${filename}"]`);
+    if (!existingItem) {
+      const treeItem = document.createElement('div');
+      treeItem.className = 'tree-item';
+      treeItem.setAttribute('data-file', filename);
+      treeItem.onclick = () => openFile(filename);
+      treeItem.setAttribute('oncontextmenu', `showCtxMenu(event,'${filename}')`);
+      treeItem.innerHTML = `<span class="file-icon ${fileIconClass(filename)}">${fileIconSvg(filename)}</span><span class="file-name">${filename}</span><div class="file-actions"><span class="file-action-btn" onclick="startRename(event,'${filename}')" title="Rename"><i data-lucide="pencil" style="width:11px;height:11px"></i></span><span class="file-action-btn" onclick="deleteFile(event,'${filename}')" title="Delete"><i data-lucide="trash-2" style="width:11px;height:11px"></i></span></div>`;
+      const treeContainer = document.getElementById('tab-explorer')?.querySelector('#tree-items');
+      if (treeContainer) treeContainer.appendChild(treeItem);
+      // Hide "No files yet" message
+      const noFiles = document.querySelector('.no-files-msg');
+      if (noFiles) noFiles.style.display = 'none';
+    }
   }
   openFile(filename);
-  updateSplitPreview();
+  setTimeout(updateSplitPreview, 100);
 }
 
 // ═══════════════════════════════════════════════
