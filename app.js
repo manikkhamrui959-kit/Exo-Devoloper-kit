@@ -5,20 +5,12 @@ const files = {};
 
 // File templates for new file creation
 const fileTemplates = {
-  'app.py': `from flask import Flask, jsonify, request\nfrom flask_cors import CORS\n\napp = Flask(__name__)\nCORS(app)\n\n@app.route('/')\ndef index():\n    return jsonify({'status': 'ok'})\n\nif __name__ == '__main__':\n    app.run(debug=True)`,
-  'index.html': `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>My App</title>\n</head>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>`,
-  'main.js': `// Main JavaScript\n\ndocument.addEventListener('DOMContentLoaded', () => {
-  initSplitResize();
-  // Show welcome screen only if no files exist
-  const hasFiles = Object.keys(files).length > 0;
-  if (!hasFiles) {
-    document.getElementById('welcome-screen').style.display = 'flex';
-  } else {
-    document.getElementById('editor-left-col').style.display = 'flex';
-    updateSplitPreview();
-  }\n  console.log('App ready');\n});\n`,
-  'style.css': `/* Styles */\n* { margin: 0; padding: 0; box-sizing: border-box; }\n\nbody {\n  font-family: sans-serif;\n}\n`,
-  'README.md': `# Project Name\n\n## Setup\n\n\`\`\`bash\n# Install dependencies\nnpm install\n\`\`\`\n\n## Usage\n\nDescribe how to use your project here.\n`
+  'app.py':     'from flask import Flask\napp = Flask(__name__)\n\n@app.route(\'/\')\ndef index():\n    return \'Hello World\'\n\nif __name__ == \'__main__\':\n    app.run(debug=True)',
+  'index.html': '<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <title>My Page</title>\n</head>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>',
+  'main.js':    '// JavaScript\nconsole.log(\'Hello World\');',
+  'script.js':  '// JavaScript\nconsole.log(\'Hello World\');',
+  'style.css':  '/* Styles */\nbody {\n  margin: 0;\n  font-family: sans-serif;\n}',
+  'README.md':  '# Project Name\n\nDescribe your project here.'
 };
 
 // ═══════════════════════════════════════════════
@@ -915,48 +907,48 @@ function updateSplitPreview() {
     pane.style.display = 'flex';
     if (resizer) resizer.style.display = 'block';
 
-    // Inject nav-blocker into head
-    const blocker = `<base target="_self"><script>(function(){
-  function toast(m){
-    var t=document.getElementById('__xt');
-    if(!t){t=document.createElement('div');t.id='__xt';
-    t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.82);color:#fff;padding:7px 18px;border-radius:20px;font-size:12px;font-family:sans-serif;z-index:2147483647;pointer-events:none;transition:opacity 0.3s';
-    document.body.appendChild(t);}
-    t.textContent=m;t.style.opacity='1';
-    clearTimeout(t._r);t._r=setTimeout(function(){t.style.opacity='0';},2200);
-  }
-  // Override ALL navigation methods
-  window.open=function(){toast('Navigation disabled in preview');return null;};
-  window.location.assign=function(){toast('Navigation disabled in preview');};
-  window.location.replace=function(){toast('Navigation disabled in preview');};
-  try{Object.defineProperty(window,'location',{
-    get:function(){return window.location;},
-    set:function(){toast('Navigation disabled in preview');}
-  });}catch(e){}
-  // Block all anchor clicks that navigate away
-  document.addEventListener('click',function(e){
-    var a=e.target.closest('a[href]');
-    if(!a)return;
-    var h=(a.getAttribute('href')||'').trim();
-    if(h===''||h.startsWith('#')){return;}
-    e.preventDefault();e.stopImmediatePropagation();
-    toast('Navigation disabled in preview');
-  },true);
-  // Block form submissions that navigate
-  document.addEventListener('submit',function(e){
-    e.preventDefault();
-    toast('Form submission disabled in preview');
-  },true);
-})();<` + `/script>`;
+    // Inject nav-blocker: base href kills relative URLs, script kills JS nav
+    const BLOCKER = [
+      '<base href="about:blank" target="_self">',
+      '<scr' + 'ipt>',
+      '(function(){',
+      '  var noop=function(m){',
+      '    var t=document.getElementById("__xt");',
+      '    if(!t){t=document.createElement("div");t.id="__xt";',
+      '    t.style.cssText="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);',
+      '    background:rgba(0,0,0,0.85);color:#fff;padding:8px 20px;border-radius:20px;',
+      '    font-size:12px;font-family:sans-serif;z-index:2147483647;pointer-events:none;transition:opacity 0.3s";',
+      '    document.body.appendChild(t);}',
+      '    t.textContent=m;t.style.opacity="1";',
+      '    clearTimeout(t._r);t._r=setTimeout(function(){t.style.opacity="0";},2200);',
+      '  };',
+      '  window.open=function(){noop("Navigation disabled in preview");return null;};',
+      '  window.location.assign=function(){noop("Navigation disabled in preview");};',
+      '  window.location.replace=function(){noop("Navigation disabled in preview");};',
+      '  document.addEventListener("click",function(e){',
+      '    var a=e.target.closest("a");',
+      '    if(!a)return;',
+      '    var h=(a.getAttribute("href")||"").trim();',
+      '    if(h===""||h==="#"||h.startsWith("#"))return;',
+      '    e.preventDefault();e.stopImmediatePropagation();',
+      '    noop("Navigation disabled in preview");',
+      '  },true);',
+      '  document.addEventListener("submit",function(e){e.preventDefault();},true);',
+      '})();',
+      '</scr' + 'ipt>'
+    ].join("");
 
     let content = htmlContent;
-    if (content.includes('</head>')) {
-      content = content.replace('</head>', blocker + '</head>');
-    } else if (content.includes('<head>')) {
-      content = content.replace('<head>', '<head>' + blocker);
+    // Inject as very first thing inside <head> before any other script runs
+    if (content.includes('<head>')) {
+      content = content.replace('<head>', '<head>' + BLOCKER);
+    } else if (content.includes('<html')) {
+      content = content.replace(/<html[^>]*>/, function(m){ return m + BLOCKER; });
     } else {
-      content = blocker + content;
+      content = BLOCKER + content;
     }
+    // Force all existing links to target _self (so sandbox blocks them, not opens new tab)
+    content = content.replace(/target\s*=\s*["']_blank["']/gi, 'target="_self"');
     frame.srcdoc = content;
   } else {
     pane.style.display = 'none';
