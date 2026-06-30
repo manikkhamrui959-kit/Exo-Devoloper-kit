@@ -907,24 +907,19 @@ function updateSplitPreview() {
     pane.style.display = 'flex';
     if (resizer) resizer.style.display = 'block';
 
-    // Inject nav-blocker: base href kills relative URLs, script kills JS nav
+    // Nav-blocker script only — no <base> tag (it was breaking rendering)
     const BLOCKER = [
-      '<base href="about:blank" target="_self">',
       '<scr' + 'ipt>',
       '(function(){',
       '  var noop=function(m){',
       '    var t=document.getElementById("__xt");',
       '    if(!t){t=document.createElement("div");t.id="__xt";',
-      '    t.style.cssText="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);',
-      '    background:rgba(0,0,0,0.85);color:#fff;padding:8px 20px;border-radius:20px;',
-      '    font-size:12px;font-family:sans-serif;z-index:2147483647;pointer-events:none;transition:opacity 0.3s";',
+      '    t.style.cssText="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#fff;padding:8px 20px;border-radius:20px;font-size:12px;font-family:sans-serif;z-index:2147483647;pointer-events:none;transition:opacity 0.3s";',
       '    document.body.appendChild(t);}',
       '    t.textContent=m;t.style.opacity="1";',
       '    clearTimeout(t._r);t._r=setTimeout(function(){t.style.opacity="0";},2200);',
       '  };',
       '  window.open=function(){noop("Navigation disabled in preview");return null;};',
-      '  window.location.assign=function(){noop("Navigation disabled in preview");};',
-      '  window.location.replace=function(){noop("Navigation disabled in preview");};',
       '  document.addEventListener("click",function(e){',
       '    var a=e.target.closest("a");',
       '    if(!a)return;',
@@ -939,7 +934,6 @@ function updateSplitPreview() {
     ].join("");
 
     let content = htmlContent;
-    // Inject as very first thing inside <head> before any other script runs
     if (content.includes('<head>')) {
       content = content.replace('<head>', '<head>' + BLOCKER);
     } else if (content.includes('<html')) {
@@ -947,7 +941,6 @@ function updateSplitPreview() {
     } else {
       content = BLOCKER + content;
     }
-    // Force all existing links to target _self (so sandbox blocks them, not opens new tab)
     content = content.replace(/target\s*=\s*["']_blank["']/gi, 'target="_self"');
     frame.srcdoc = content;
   } else {
