@@ -886,6 +886,39 @@ function toggleSplitView() {
   refreshIcons();
 }
 
+function neutralizeLinks(htmlStr) {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlStr, 'text/html');
+
+    // Neutralize <a> tags whose href would navigate away from the preview
+    doc.querySelectorAll('a[href]').forEach(a => {
+      const href = (a.getAttribute('href') || '').trim();
+      const isSafe = href === '' || href.startsWith('#') ||
+                     href.startsWith('mailto:') || href.startsWith('tel:') ||
+                     href.startsWith('javascript:');
+      if (!isSafe) {
+        a.setAttribute('data-exo-href', href);
+        a.removeAttribute('href');
+        a.style.cursor = a.style.cursor || 'pointer';
+        a.classList.add('__exo_blocked_link');
+      }
+    });
+
+    // Prevent forms from submitting/navigating
+    doc.querySelectorAll('form').forEach(f => f.setAttribute('onsubmit', 'return false;'));
+
+    // Strip meta refresh redirects
+    doc.querySelectorAll('meta[http-equiv]').forEach(m => {
+      if ((m.getAttribute('http-equiv') || '').toLowerCase() === 'refresh') m.remove();
+    });
+
+    return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  } catch (e) {
+    return htmlStr;
+  }
+}
+
 function updateSplitPreview() {
   const frame   = document.getElementById('split-preview-frame');
   const pane    = document.getElementById('split-preview');
@@ -907,41 +940,35 @@ function updateSplitPreview() {
     pane.style.display = 'flex';
     if (resizer) resizer.style.display = 'block';
 
-    // Nav-blocker script only — no <base> tag (it was breaking rendering)
     const BLOCKER = [
+      '<style>.__exo_blocked_link{cursor:pointer;}</style>',
       '<scr' + 'ipt>',
       '(function(){',
-      '  var noop=function(m){',
+      '  function toast(m){',
       '    var t=document.getElementById("__xt");',
       '    if(!t){t=document.createElement("div");t.id="__xt";',
       '    t.style.cssText="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#fff;padding:8px 20px;border-radius:20px;font-size:12px;font-family:sans-serif;z-index:2147483647;pointer-events:none;transition:opacity 0.3s";',
       '    document.body.appendChild(t);}',
       '    t.textContent=m;t.style.opacity="1";',
       '    clearTimeout(t._r);t._r=setTimeout(function(){t.style.opacity="0";},2200);',
-      '  };',
-      '  window.open=function(){noop("Navigation disabled in preview");return null;};',
+      '  }',
+      '  window.open=function(){toast("Navigation disabled in preview");return null;};',
       '  document.addEventListener("click",function(e){',
-      '    var a=e.target.closest("a");',
+      '    var a=e.target.closest("a.__exo_blocked_link");',
       '    if(!a)return;',
-      '    var h=(a.getAttribute("href")||"").trim();',
-      '    if(h===""||h==="#"||h.startsWith("#"))return;',
       '    e.preventDefault();e.stopImmediatePropagation();',
-      '    noop("Navigation disabled in preview");',
+      '    toast("Navigation disabled in preview");',
       '  },true);',
-      '  document.addEventListener("submit",function(e){e.preventDefault();},true);',
       '})();',
       '</scr' + 'ipt>'
     ].join("");
 
-    let content = htmlContent;
+    let content = neutralizeLinks(htmlContent);
     if (content.includes('<head>')) {
       content = content.replace('<head>', '<head>' + BLOCKER);
-    } else if (content.includes('<html')) {
-      content = content.replace(/<html[^>]*>/, function(m){ return m + BLOCKER; });
     } else {
-      content = BLOCKER + content;
+      content = content.replace(/<html[^>]*>/i, function(m){ return m + BLOCKER; });
     }
-    content = content.replace(/target\s*=\s*["']_blank["']/gi, 'target="_self"');
     frame.srcdoc = content;
   } else {
     pane.style.display = 'none';
