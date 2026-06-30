@@ -905,8 +905,26 @@ function neutralizeLinks(htmlStr) {
       }
     });
 
-    // Prevent forms from submitting/navigating
-    doc.querySelectorAll('form').forEach(f => f.setAttribute('onsubmit', 'return false;'));
+    // Any <button> that would submit a form (type=submit, or no type inside a <form>)
+    // gets demoted to type=button so it can never trigger native form submission/navigation.
+    doc.querySelectorAll('button').forEach(btn => {
+      const type = (btn.getAttribute('type') || '').toLowerCase();
+      const inForm = !!btn.closest('form');
+      if (type === 'submit' || type === 'reset' || (inForm && !type)) {
+        btn.setAttribute('type', 'button');
+      }
+    });
+
+    // Same for <input type="submit"> / <input type="image">
+    doc.querySelectorAll('input[type="submit" i], input[type="image" i]').forEach(inp => {
+      inp.setAttribute('type', 'button');
+    });
+
+    // Prevent forms from submitting/navigating (defense in depth)
+    doc.querySelectorAll('form').forEach(f => {
+      f.setAttribute('onsubmit', 'return false;');
+      f.removeAttribute('action');
+    });
 
     // Strip meta refresh redirects
     doc.querySelectorAll('meta[http-equiv]').forEach(m => {
@@ -953,6 +971,17 @@ function updateSplitPreview() {
       '    clearTimeout(t._r);t._r=setTimeout(function(){t.style.opacity="0";},2200);',
       '  }',
       '  window.open=function(){toast("Navigation disabled in preview");return null;};',
+      '  try{',
+      '    var _href=Object.getOwnPropertyDescriptor(Location.prototype,"href")||Object.getOwnPropertyDescriptor(window.location.__proto__,"href");',
+      '    if(_href&&_href.set){',
+      '      Object.defineProperty(window.location,"href",{',
+      '        get:_href.get,',
+      '        set:function(){toast("Navigation disabled in preview");}',
+      '      });',
+      '    }',
+      '  }catch(e){}',
+      '  window.location.assign=function(){toast("Navigation disabled in preview");};',
+      '  window.location.replace=function(){toast("Navigation disabled in preview");};',
       '  document.addEventListener("click",function(e){',
       '    var a=e.target.closest("a.__exo_blocked_link");',
       '    if(!a)return;',
