@@ -973,22 +973,47 @@ async function runCode() {
   }
 }
 
-function showPreview() {
+async function showPreview() {
   updateSplitPreview();
   const placeholder = document.getElementById('preview-placeholder');
   const frame = document.getElementById('preview-frame');
   if (placeholder) placeholder.style.display = 'none';
-  if (frame) {
-    frame.style.display = 'block';
-    const activeExt = (activeFile || '').split('.').pop().toLowerCase();
-    let htmlContent = null;
-    if (activeExt === 'html') {
-      htmlContent = files[activeFile];
-    } else {
-      const htmlFile = Object.keys(files).find(f => f.toLowerCase().endsWith('.html'));
-      if (htmlFile) htmlContent = files[htmlFile];
+  if (!frame) return;
+
+  frame.style.display = 'block';
+  const activeExt = (activeFile || '').split('.').pop().toLowerCase();
+  const entryFile = activeExt === 'html'
+    ? activeFile
+    : Object.keys(files).find(f => f.toLowerCase().endsWith('.html'));
+
+  if (!entryFile) {
+    frame.removeAttribute('src');
+    frame.srcdoc = '<h1>No HTML file found</h1>';
+    notify('No HTML file found', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch('/preview/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files, entry: entryFile })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      frame.removeAttribute('src');
+      frame.srcdoc = `<h1>Preview error</h1><p>${data.error || 'Unknown error'}</p>`;
+      notify(data.error || 'Preview failed', 'error');
+      return;
     }
-    frame.srcdoc = htmlContent || '<h1>No HTML file found</h1>';
+    // Real served URL instead of srcdoc — relative <link>/<script src>/<img src> now resolve properly
+    frame.removeAttribute('srcdoc');
+    frame.src = data.url;
+  } catch (e) {
+    frame.removeAttribute('src');
+    frame.srcdoc = '<h1>Could not reach preview server</h1>';
+    notify('Network error: could not build preview', 'error');
+    return;
   }
   notify('Preview ready', 'success');
 }
