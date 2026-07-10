@@ -1,4 +1,4 @@
-import os, subprocess, tempfile, re, signal, threading, logging, traceback
+import os, subprocess, tempfile, re, signal, threading, logging, traceback, uuid, time, shutil
 from flask import Flask, send_from_directory, request, jsonify
 from flask_cors import CORS
 
@@ -27,6 +27,45 @@ COMPILE_TIMEOUT = 25
 # at the same time can starve the box and every request starts timing out / "glitching".
 MAX_CONCURRENT_RUNS = int(os.environ.get('MAX_CONCURRENT_RUNS', 3))
 _run_semaphore = threading.Semaphore(MAX_CONCURRENT_RUNS)
+
+# ─────────────────────────────────────────────────────────────
+# Live preview server — writes the user's HTML/CSS/JS files to a real
+# folder on disk and serves them with actual routes, instead of the old
+# srcdoc-iframe trick. This fixes multi-file projects (relative <link>,
+# <script src>, <img src> paths all just work now) and avoids the
+# "DevKit clone" iframe-reload bug entirely, since nothing is nested
+# inside the DevKit's own document anymore — it's a normal page load.
+# ─────────────────────────────────────────────────────────────
+SESSIONS_DIR = tempfile.mkdtemp(prefix='devkit_preview_')
+SESSION_TTL = 30 * 60  # 30 minutes of inactivity -> cleaned up
+MAX_TOTAL_SESSIONS = 200  # hard cap so disk can't fill up
+MAX_CONTENT_SIZE_FOR_PREVIEW = 5 * 1024 * 1024  # 5MB total per project
+
+_sessions_lock = threading.Lock()
+_session_entry = {}   # sid -> entry filename (e.g. "index.html")
+_session_touch = {}   # sid -> last-used timestamp
+
+
+def _sid_is_valid(sid):
+    return bool(re.fullmatch(r'[a-f0-9]{32}', sid))
+
+
+def _cleanup_old_sessions():
+    now = time.time()
+    with _sessions_lock:
+        for sid in list(_session_touch):
+            if now - _session_touch[sid] > SESSION_TTL:
+                shutil.rmtree(os.path.join(SESSIONS_DIR, sid), ignore_errors=True)
+                _session_touch.pop(sid, None)
+                _session_entry.pop(sid, None)
+
+
+def _safe_join_session(session_dir, fname):
+    fname = (fname or '').replace('\\', '/').lstrip('/')
+    candidate = os.path.normpath(os.path.join(session_dir, fname))
+    if not candidate.startswith(os.path.abspath(session_dir) + os.sep) and candidate != os.path.abspath(session_dir):
+        return None
+    return candidate
 
 COMPILED_LANGS = {'c', 'cpp', 'java', 'rs', 'cs', 'kt', 'swift', 'scala', 'hs'}
 
@@ -306,6 +345,80 @@ def terminal_cmd():
         return jsonify({'output': 'Internal error while running that command. This has been logged.', 'error': True})
     finally:
         _run_semaphore.release()
+
+
+@app.route('/preview/create', methods=['POST'])
+def preview_create():
+    """Body: {files: {"index.html": "...", "style.css": "...", ...}, entry: "index.html"}
+    Writes the project to a real folder and returns a URL that actually
+    serves it — so relative links between files work like a real site."""
+    data = request.get_json(silent=True) or {}
+    files_payload = data.get('files', {}) or {}
+    entry = data.get('entry') or ''
+
+    if not files_payload:
+        return jsonify({'error': 'No files provided'}), 400
+
+    total_size = sum(len(str(v)) for v in files_payload.values())
+    if total_size > MAX_CONTENT_SIZE_FOR_PREVIEW:
+        return jsonify({'error': f'Project too large to preview (max {MAX_CONTENT_SIZE_FOR_PREVIEW:,} bytes total)'}), 400
+
+    _cleanup_old_sessions()
+    with _sessions_lock:
+        if len(_session_touch) >= MAX_TOTAL_SESSIONS:
+            return jsonify({'error': 'Server is at capacity for live previews right now, try again shortly.'}), 503
+
+    sid = uuid.uuid4().hex
+    session_dir = os.path.join(SESSIONS_DIR, sid)
+    os.makedirs(session_dir, exist_ok=True)
+
+    try:
+        for fname, fcontent in files_payload.items():
+            fpath = _safe_join_session(session_dir, fname)
+            if fpath is None:
+                shutil.rmtree(session_dir, ignore_errors=True)
+                return jsonify({'error': f'Invalid file path: {fname}'}), 400
+            os.makedirs(os.path.dirname(fpath), exist_ok=True)
+            with open(fpath, 'w', encoding='utf-8') as f:
+                f.write(fcontent if isinstance(fcontent, str) else str(fcontent))
+    except Exception:
+        log.exception('failed writing preview session')
+        shutil.rmtree(session_dir, ignore_errors=True)
+        return jsonify({'error': 'Failed to create preview'}), 500
+
+    if not entry or not os.path.isfile(os.path.join(session_dir, entry)):
+        html_files = [f for f in files_payload if f.lower().endswith('.html')]
+        entry = 'index.html' if 'index.html' in html_files else (html_files[0] if html_files else 'index.html')
+
+    with _sessions_lock:
+        _session_entry[sid] = entry
+        _session_touch[sid] = time.time()
+
+    return jsonify({'sid': sid, 'url': f'/preview/{sid}/{entry}'})
+
+
+@app.route('/preview/<sid>/')
+@app.route('/preview/<sid>')
+def preview_root(sid):
+    if not _sid_is_valid(sid) or sid not in _session_entry:
+        return jsonify({'error': 'Preview not found or expired'}), 404
+    with _sessions_lock:
+        _session_touch[sid] = time.time()
+        entry = _session_entry[sid]
+    return send_from_directory(os.path.join(SESSIONS_DIR, sid), entry)
+
+
+@app.route('/preview/<sid>/<path:filename>')
+def preview_file(sid, filename):
+    if not _sid_is_valid(sid) or sid not in _session_entry:
+        return jsonify({'error': 'Preview not found or expired'}), 404
+    session_dir = os.path.join(SESSIONS_DIR, sid)
+    safe_path = _safe_join_session(session_dir, filename)
+    if safe_path is None or not os.path.isfile(safe_path):
+        return jsonify({'error': 'File not found'}), 404
+    with _sessions_lock:
+        _session_touch[sid] = time.time()
+    return send_from_directory(session_dir, filename)
 
 
 @app.route('/health')
