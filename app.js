@@ -1465,7 +1465,7 @@ async function sendAI() {
     messages.appendChild(botWrap);
     refreshIcons();
   } catch (err) {
-    thinkDiv.remove();
+    thinkDiv.remove(); 
     const e = document.createElement('div'); e.className = 'ai-msg-wrap bot';
     e.innerHTML = `<div class="ai-msg bot" style="border-color:var(--red)">⚠ Connection error: ${err.message}</div>`;
     messages.appendChild(e); aiHistory.pop();
